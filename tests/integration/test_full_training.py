@@ -7,6 +7,8 @@ import pytest
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
+
+from kito.callbacks import Callback
 from kito.engine import Engine
 from kito.module import KitoModule
 from tests.fixtures.mock_config import get_default_config
@@ -124,12 +126,20 @@ class TestFullTrainingWorkflow:
         module = SimpleRegressionModule('TestModel', device, config)
         engine = Engine(module, config)
 
-        # Track initial loss
-        initial_losses = []
-
-        class LossTracker:
+        # Track losses with proper callback
+        class LossTracker(Callback):
             def __init__(self):
                 self.losses = []
+
+            # Add all required callback methods (even if empty)
+            def on_train_begin(self, **kwargs):
+                pass
+
+            def on_train_end(self, **kwargs):
+                pass
+
+            def on_epoch_begin(self, **kwargs):
+                pass
 
             def on_epoch_end(self, epoch, logs, **kwargs):
                 self.losses.append(logs['train_loss'])
@@ -148,3 +158,4 @@ class TestFullTrainingWorkflow:
         # Loss should generally decrease
         assert len(tracker.losses) == 10
         assert tracker.losses[-1] < tracker.losses[0]  # Final < initial
+
