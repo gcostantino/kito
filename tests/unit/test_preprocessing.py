@@ -99,14 +99,16 @@ class TestClipOutliers:
 
     def test_clip_outliers_default(self):
         """Test clipping outliers at 3 std."""
-        # Create data with outliers
-        data = np.array([1.0, 2.0, 3.0, 100.0, -100.0])
-        labels = np.zeros(5)
+        # Create data where outliers are clear
+        # Normal data around 0, with extreme outliers
+        data = np.array([0.0, 0.1, -0.1, 0.2, -0.2, 0.15, -0.15, 100.0, -100.0])
+        labels = np.zeros(9)
 
         clip = ClipOutliers(n_std=3.0)
         data_clipped, _ = clip(data, labels)
 
-        # Outliers should be clipped
+        # With this data, mean~0, std~33, so 3*std~99
+        # 100 should be clipped to ~99, -100 to ~-99
         assert data_clipped.max() < 100.0
         assert data_clipped.min() > -100.0
 
