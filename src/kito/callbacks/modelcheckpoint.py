@@ -1,7 +1,7 @@
 import os
 import torch
 
-from src.kito.callbacks.callback_base import Callback
+from kito.callbacks.callback_base import Callback
 
 
 class ModelCheckpoint(Callback):

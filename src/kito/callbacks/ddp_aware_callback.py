@@ -1,6 +1,6 @@
 import torch.distributed as dist
 
-from src.kito.callbacks.callback_base import Callback
+from kito.callbacks.callback_base import Callback
 
 
 class DDPAwareCallback(Callback):

@@ -14,10 +14,10 @@ from typing import Optional
 
 from torch.utils.data import DataLoader, Subset, DistributedSampler
 
-from src.kito.config.moduleconfig import KitoModuleConfig
-from src.kito.data.datasets import KitoDataset
-from src.kito.data.preprocessed_dataset import PreprocessedDataset
-from src.kito.data.preprocessing import Preprocessing
+from kito.config.moduleconfig import KitoModuleConfig
+from kito.data.datasets import KitoDataset
+from kito.data.preprocessed_dataset import PreprocessedDataset
+from kito.data.preprocessing import Preprocessing
 
 
 class BaseDataPipeline(ABC):

@@ -9,17 +9,17 @@ import torch
 import torch.distributed as dist
 from torch.utils.data import DataLoader
 
-from src.kito.callbacks.callback_base import Callback, CallbackList
-from src.kito.callbacks.ddp_aware_callback import DDPAwareCallback
-from src.kito.data.datapipeline import GenericDataPipeline
-from src.kito.module import KitoModule
-from src.kito.strategies.logger_strategy import DDPLogger, DefaultLogger
-from src.kito.strategies.progress_bar_strategy import (
+from kito.callbacks.callback_base import Callback, CallbackList
+from kito.callbacks.ddp_aware_callback import DDPAwareCallback
+from kito.data.datapipeline import GenericDataPipeline
+from kito.module import KitoModule
+from kito.strategies.logger_strategy import DDPLogger, DefaultLogger
+from kito.strategies.progress_bar_strategy import (
     StandardProgressBarHandler,
     DDPProgressBarHandler
 )
-from src.kito.strategies.readiness_validator import ReadinessValidator
-from src.kito.utils.gpu_utils import assign_device
+from kito.strategies.readiness_validator import ReadinessValidator
+from kito.utils.gpu_utils import assign_device
 
 
 class Engine:
