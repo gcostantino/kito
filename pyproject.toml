@@ -56,6 +56,12 @@ all = [
     "sphinx-rtd-theme>=1.0",
 ]
 
+[project.urls]
+Homepage = "https://github.com/gcostantino/kito"
+Documentation = "https://kito.readthedocs.io"
+Repository = "https://github.com/gcostantino/kito"
+"Bug Tracker" = "https://github.com/gcostantino/kito/issues"
+
 [tool.setuptools.packages.find]
 where = ["src"]
 
