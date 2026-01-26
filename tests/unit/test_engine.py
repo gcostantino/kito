@@ -72,12 +72,18 @@ class TestEngineInitialization:
         assert engine.current_epoch == 0
         assert engine.stop_training == False
 
-    def test_engine_device_assignment(self, device, mock_config):
+    @patch('torch.cuda.is_available')
+    @patch('torch.backends.mps.is_available')
+    def test_engine_device_assignment(self, mock_mps, mock_cuda, device, mock_config):
         """Test engine device assignment."""
+        # Force CPU for testing
+        mock_cuda.return_value = False
+        mock_mps.return_value = False
+
         module = MockModule('TestModel', device, mock_config)
         engine = Engine(module, mock_config)
 
-        assert engine.device.type == 'cpu'  # In tests we use CPU
+        assert engine.device.type == 'cpu'
 
     @patch('torch.distributed.is_initialized')
     @patch('torch.distributed.get_rank')
