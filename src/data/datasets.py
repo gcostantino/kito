@@ -92,9 +92,12 @@ class H5Dataset(KitoDataset):
         Called automatically in _load_sample().
         """
         if self.dataset_data is None or self.dataset_labels is None:
-            self.h5file = h5py.File(self.file_path, 'r')
-            self.dataset_data = self.h5file["data"]
-            self.dataset_labels = self.h5file["labels"]
+            try:
+                self.h5file = h5py.File(self.file_path, 'r')
+                self.dataset_data = self.h5file["data"]
+                self.dataset_labels = self.h5file["labels"]
+            except (OSError, KeyError) as e:
+                raise RuntimeError(f"Failed to load H5 file '{self.file_path}': {e}")
 
     def _load_sample(self, index):
         """Load sample from HDF5 file with lazy loading."""
