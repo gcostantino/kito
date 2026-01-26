@@ -136,12 +136,21 @@ class Standardization(Preprocessing):
 
     def __call__(self, data, labels):
         # Compute mean/std on first call if not provided
-        if self.mean is None and not self._fitted:
+        '''if self.mean is None and not self._fitted:
             self.mean = float(data.mean())
             self._fitted = True
 
         if self.std is None and not self._fitted:
             self.std = float(data.std())
+            self._fitted = True'''
+        if self.mean is None:
+            if not self._fitted:
+                self.mean = float(data.mean())
+        if self.std is None:
+            if not self._fitted:
+                self.std = float(data.std())
+
+        if not self._fitted:
             self._fitted = True
 
         # Standardize
