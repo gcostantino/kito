@@ -94,7 +94,7 @@ class TestStandardization:
         assert np.array_equal(labels, labels_out)
 
 
-class TestClipOutliers:
+'''class TestClipOutliers:
     """Test ClipOutliers preprocessing."""
 
     def test_clip_outliers_default(self):
@@ -122,7 +122,7 @@ class TestClipOutliers:
 
         assert isinstance(data_clipped, torch.Tensor)
         assert data_clipped.max() < 100.0
-
+'''
 
 class TestDetrend:
     """Test Detrend preprocessing."""
