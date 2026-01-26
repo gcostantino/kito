@@ -20,6 +20,7 @@ dependencies = [
     "h5py>=3.0.0",
     "torchsummary>=1.5.1",
     "packaging>=20.0",
+    "tensorboard>=2.10.0",
 ]
 
 # Optional dependencies
