@@ -1,0 +1,149 @@
+"""
+Base configuration system for KitoModule framework.
+
+Users can extend these base configs with their own custom parameters.
+"""
+from dataclasses import dataclass, field
+from typing import Tuple, List, Optional, Dict, Any
+
+
+@dataclass
+class PreprocessingStepConfig:
+    """
+    Configuration for a single preprocessing step.
+
+    Args:
+        type: Name of preprocessing class (e.g., 'detrend', 'standardization')
+        params: Dictionary of parameters to pass to preprocessing class
+
+    Example:
+        >>> step = PreprocessingStepConfig(
+        ...     type='standardization',
+        ...     params={'mean': 0.5, 'std': 0.2}
+        ... )
+    """
+    type: str
+    params: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class DataConfig:
+    """
+    Data loading and preprocessing configuration.
+
+    This config defines:
+    - What dataset to use (H5, memory, custom)
+    - Where data is located
+    - How to initialize the dataset (flexible args)
+    - Memory loading strategy
+    - How to split data (train/val/test)
+    - What preprocessing to apply
+    - DataLoader settings
+    """
+
+    # Dataset configuration
+    dataset_type: str = 'h5dataset'  # 'h5dataset', 'memdataset', or custom
+
+    # Simple path (backward compatible)
+    dataset_path: str = ''
+
+    # Flexible initialization args (for custom datasets)
+    # If provided, takes precedence over dataset_path
+    # Allows any constructor signature: Dataset(**dataset_init_args)
+    dataset_init_args: Dict[str, Any] = field(default_factory=dict)
+
+    # Memory management
+    load_into_memory: bool = False  # Load entire dataset into RAM for faster training
+
+    # Splitting ratios
+    train_ratio: float = 0.8
+    val_ratio: float = 0.1
+    # test_ratio is implicit: 1 - train_ratio - val_ratio
+
+    # Total samples to use (None = use all available)
+    total_samples: Optional[int] = None
+
+    # Preprocessing pipeline
+    # List of preprocessing steps applied in order
+    preprocessing: List[PreprocessingStepConfig] = field(default_factory=list)
+
+    # DataLoader settings
+    num_workers: int = 0
+    prefetch_factor: int = 2
+    pin_memory: bool = False
+    persistent_workers: bool = False
+
+
+@dataclass
+class TrainingConfig:
+    """Core training parameters required by KitoModule."""
+
+    # Essential training parameters
+    learning_rate: float
+    n_train_epochs: int
+    batch_size: int
+    train_mode: bool  # True for training, False for inference
+
+    # Verbosity (0=silent, 1=progress bar, 2=detailed)
+    train_verbosity_level: int = 2
+    val_verbosity_level: int = 2
+    test_verbosity_level: int = 2
+
+    # Distributed training
+    distributed_training: bool = False
+    master_gpu_id: int = 0  # Only used if not distributed
+
+    # Weight initialization
+    initialize_model_with_saved_weights: bool = False
+
+
+@dataclass
+class ModelConfig:
+    """Core model parameters required by KitoModule."""
+
+    # Data dimensions
+    input_data_size: Tuple[int, ...]  # Flexible shape
+
+    # Loss and optimization
+    loss: str = ""
+
+    # Callbacks and logging
+    log_to_tensorboard: bool = False
+    save_model_weights: bool = False
+    text_logging: bool = False
+    csv_logging: bool = False
+    train_codename: str = "experiment"
+
+    # Weights
+    weight_load_path: str = ""
+
+    # Inference
+    save_inference_to_disk: bool = False
+    inference_filename: str = ""
+
+    # TensorBoard visualization (optional)
+    tensorboard_img_id: str = "training_viz"
+    batch_idx_viz: List[int] = field(default_factory=lambda: [0])
+
+
+@dataclass
+class WorkDirConfig:
+    """Working directory configuration."""
+    work_directory: str
+
+
+@dataclass
+class KitoModuleConfig:
+    """
+    Base configuration container for KitoModule.
+
+    Contains all configuration sections:
+    - training: Training parameters
+    - model: Model architecture and settings
+    - workdir: Output directories
+    - data: Dataset and preprocessing
+    """
+    training: TrainingConfig
+    model: ModelConfig
+    workdir: WorkDirConfig
+    data: DataConfig

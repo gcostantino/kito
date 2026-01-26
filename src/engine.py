@@ -9,11 +9,10 @@ import torch
 import torch.distributed as dist
 from torch.utils.data import DataLoader
 
-from src.module import KitoModule
 from src.callbacks.callback_base import Callback, CallbackList
 from src.callbacks.ddp_aware_callback import DDPAwareCallback
-from src.data.datamodule import GenericDataModule
 from src.data.datapipeline import GenericDataPipeline
+from src.module import KitoModule
 from src.strategies.logger_strategy import DDPLogger, DefaultLogger
 from src.strategies.progress_bar_strategy import (
     StandardProgressBarHandler,
@@ -238,7 +237,7 @@ class Engine:
         self._first_train_batch = True
 
         # ===== HOOK: on_train_begin =====
-        callbacks.on_train_begin(trainer=self, model=self.module.model)
+        callbacks.on_train_begin(engine=self, model=self.module.model)
 
         try:
             for epoch in range(max_epochs):
@@ -247,7 +246,7 @@ class Engine:
                 # ===== HOOK: on_epoch_begin =====
                 callbacks.on_epoch_begin(
                     epoch=self.current_epoch,
-                    trainer=self,
+                    engine=self,
                     model=self.module.model
                 )
 
@@ -272,7 +271,7 @@ class Engine:
                 # ===== HOOK: on_epoch_end =====
                 callbacks.on_epoch_end(
                     epoch=self.current_epoch,
-                    trainer=self,
+                    engine=self,
                     model=self.module.model,
                     logs=logs,
                     val_data=val_data,
@@ -289,7 +288,7 @@ class Engine:
 
         finally:
             # ===== HOOK: on_train_end =====
-            callbacks.on_train_end(trainer=self, model=self.module.model)
+            callbacks.on_train_end(engine=self, model=self.module.model)
 
             # Cleanup DDP
             if self.distributed_training:
@@ -586,7 +585,7 @@ class Engine:
             TensorBoardScalars,
             TensorBoardHistograms,
             TensorBoardGraph
-        )''' # vedi se tenerlo cosi' + forse fai interfacce in __init__.py
+        )'''  # vedi se tenerlo cosi' + forse fai interfacce in __init__.py
         from src.callbacks.modelcheckpoint import ModelCheckpoint
         from src.callbacks.csv_logger import CSVLogger
         from src.callbacks.txt_logger import TextLogger
