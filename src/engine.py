@@ -208,6 +208,9 @@ class Engine:
             train_loader = data_pipeline.train_dataloader()
             val_loader = data_pipeline.val_dataloader()
 
+        if train_loader is None and data_pipeline is None:
+            raise ValueError("Must provide either train_loader or data_pipeline")
+
         # Validate readiness (should always pass after auto-setup)
         ReadinessValidator.check_for_training(self.module)
         ReadinessValidator.check_data_loaders(train_loader, val_loader)
