@@ -15,7 +15,7 @@ from typing import Tuple, List
 import numpy as np
 import torch
 
-from src.data.registry import PREPROCESSING
+from src.kito.data.registry import PREPROCESSING
 
 
 class Preprocessing(ABC):

@@ -9,17 +9,17 @@ import torch
 import torch.distributed as dist
 from torch.utils.data import DataLoader
 
-from src.callbacks.callback_base import Callback, CallbackList
-from src.callbacks.ddp_aware_callback import DDPAwareCallback
-from src.data.datapipeline import GenericDataPipeline
-from src.module import KitoModule
-from src.strategies.logger_strategy import DDPLogger, DefaultLogger
-from src.strategies.progress_bar_strategy import (
+from src.kito.callbacks.callback_base import Callback, CallbackList
+from src.kito.callbacks.ddp_aware_callback import DDPAwareCallback
+from src.kito.data.datapipeline import GenericDataPipeline
+from src.kito.module import KitoModule
+from src.kito.strategies.logger_strategy import DDPLogger, DefaultLogger
+from src.kito.strategies.progress_bar_strategy import (
     StandardProgressBarHandler,
     DDPProgressBarHandler
 )
-from src.strategies.readiness_validator import ReadinessValidator
-from src.utils.gpu_utils import assign_device
+from src.kito.strategies.readiness_validator import ReadinessValidator
+from src.kito.utils.gpu_utils import assign_device
 
 
 class Engine:
@@ -589,12 +589,12 @@ class Engine:
             TensorBoardHistograms,
             TensorBoardGraph
         )'''  # vedi se tenerlo cosi' + forse fai interfacce in __init__.py
-        from src.callbacks.modelcheckpoint import ModelCheckpoint
-        from src.callbacks.csv_logger import CSVLogger
-        from src.callbacks.txt_logger import TextLogger
-        from src.callbacks.tensorboard_callbacks import TensorBoardScalars, TensorBoardHistograms, TensorBoardGraph
+        from src.kito.callbacks.modelcheckpoint import ModelCheckpoint
+        from src.kito.callbacks.csv_logger import CSVLogger
+        from src.kito.callbacks.txt_logger import TextLogger
+        from src.kito.callbacks.tensorboard_callbacks import TensorBoardScalars, TensorBoardHistograms, TensorBoardGraph
 
-        from src.callbacks.tensorboard_callback_images import SimpleImagePlotter
+        from src.kito.callbacks.tensorboard_callback_images import SimpleImagePlotter
 
         callbacks = []
 

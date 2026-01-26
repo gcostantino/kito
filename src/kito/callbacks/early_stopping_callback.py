@@ -1,4 +1,4 @@
-from src.callbacks.callback_base import Callback
+from src.kito.callbacks.callback_base import Callback
 
 
 class EarlyStoppingCallback(Callback):

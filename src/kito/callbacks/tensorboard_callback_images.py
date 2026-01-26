@@ -9,7 +9,7 @@ from typing import Optional, List
 import matplotlib.pyplot as plt
 from torch.utils.tensorboard import SummaryWriter
 
-from src.callbacks.callback_base import Callback
+from src.kito.callbacks.callback_base import Callback
 
 
 class BaseImagePlotter(Callback):

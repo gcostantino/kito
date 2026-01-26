@@ -1,6 +1,6 @@
 from typing import Optional, Callable
 
-from src.callbacks.callback_base import Callback
+from src.kito.callbacks.callback_base import Callback
 from torch.utils.tensorboard import SummaryWriter
 
 

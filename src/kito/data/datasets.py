@@ -3,7 +3,7 @@ import h5py
 from torch.utils.data import Dataset
 from abc import ABC, abstractmethod
 
-from src.data.registry import DATASETS
+from src.kito.data.registry import DATASETS
 
 
 class KitoDataset(Dataset, ABC):
