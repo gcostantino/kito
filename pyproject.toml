@@ -1,0 +1,14 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kito"
+dynamic = ["version"]
+# ... other fields
+
+[tool.setuptools.packages.find]
+where = ["src"]  # ← This tells setuptools where to find kito/
+
+[tool.setuptools.dynamic]
+version = {attr = "kito.__version__"}
