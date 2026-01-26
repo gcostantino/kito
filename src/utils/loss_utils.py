@@ -33,6 +33,6 @@ def get_loss(loss: str):
     if loss in _torch_loss_dict:
         return getattr(nn, _torch_loss_dict[loss])()  # returns the instantiated object
     if loss == 'ssim_loss':
-        return ssim_loss  # return the signature of the custom loss
+        return ssim_loss  # return the signature of the custom loss: /!\ this is not the object
     raise ValueError(
         f"Loss '{loss}' not valid. Supported values are: {', '.join(map(repr, _torch_loss_dict.keys()))}")
