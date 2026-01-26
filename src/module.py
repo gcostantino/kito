@@ -244,11 +244,20 @@ class KitoModule:
 
         Override this for custom prediction logic.
         """
-        # Handle different batch formats  # not sure is 100% correct
-        if isinstance(batch, (tuple, list)):
+        # Handle different batch formats
+        '''if isinstance(batch, (tuple, list)):
             inputs = batch[0]
         else:
-            inputs = batch  # here in the else case errors might produce...
+            inputs = batch  # here in the else case errors might produce...'''
+        if isinstance(batch, (tuple, list)):
+            inputs = batch[0] if len(batch) > 0 else batch
+        elif isinstance(batch, torch.Tensor):
+            inputs = batch
+        elif isinstance(batch, dict):
+            # Handle dict batches (common in HuggingFace)
+            inputs = batch.get('input', batch.get('data', batch))
+        else:
+            raise TypeError(f"Unsupported batch type: {type(batch)}")
 
         # Move to device
         inputs = self.send_data_to_device(inputs)
