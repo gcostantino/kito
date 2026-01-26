@@ -131,17 +131,7 @@ class TestFullTrainingWorkflow:
             def __init__(self):
                 self.losses = []
 
-            # Add all required callback methods (even if empty)
-            def on_train_begin(self, **kwargs):
-                pass
-
-            def on_train_end(self, **kwargs):
-                pass
-
-            def on_epoch_begin(self, **kwargs):
-                pass
-
-            def on_epoch_end(self, epoch, logs, **kwargs):
+            def on_epoch_end(self, epoch, eng, model, logs=None, **kwargs):
                 self.losses.append(logs['train_loss'])
 
         tracker = LossTracker()
