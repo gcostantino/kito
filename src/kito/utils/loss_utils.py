@@ -1,6 +1,6 @@
 from torch import nn
 
-from src.kito.utils.ssim_utils import ssim_loss
+from kito.utils.ssim_utils import ssim_loss
 
 _torch_loss_dict = {
     'mean_squared_error': 'MSELoss',
