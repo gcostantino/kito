@@ -3,10 +3,10 @@
 **Effortless PyTorch training - define your model, Kito handles the rest.**
 
 [![Tests](https://github.com/gcostantino/kito/actions/workflows/tests.yml/badge.svg)](https://github.com/gcostantino/kito/actions)
-[![PyPI version](https://badge.fury.io/py/pytorch-kito.svg)](https://pypi.org/project/pytorch-kito/)
-[![Downloads](https://pepy.tech/badge/pytorch-kito)](https://pepy.tech/project/pytorch-kito)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![PyPI version](https://img.shields.io/pypi/v/pytorch-kito)](https://pypi.org/project/pytorch-kito/)
+[![Python](https://img.shields.io/pypi/pyversions/pytorch-kito)](https://pypi.org/project/pytorch-kito/)
+[![Downloads](https://img.shields.io/pypi/dm/pytorch-kito)](https://pypi.org/project/pytorch-kito/)
+[![License](https://img.shields.io/pypi/l/pytorch-kito)](https://github.com/gcostantino/kito/blob/main/LICENSE)
 
 Kito is a lightweight PyTorch training library that eliminates boilerplate code. Define your model architecture and loss function - Kito automatically handles training loops, optimization, callbacks, distributed training, and more.
 
