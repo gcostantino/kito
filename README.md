@@ -3,7 +3,8 @@
 **Effortless PyTorch training - define your model, Kito handles the rest.**
 
 [![Tests](https://github.com/gcostantino/kito/actions/workflows/tests.yml/badge.svg)](https://github.com/gcostantino/kito/actions)
-[![PyPI version](https://badge.fury.io/py/pytorch-kito.svg)](https://badge.fury.io/py/pytorch-kito)
+[![PyPI version](https://badge.fury.io/py/pytorch-kito.svg)](https://pypi.org/project/pytorch-kito/)
+[![Downloads](https://pepy.tech/badge/pytorch-kito)](https://pepy.tech/project/pytorch-kito)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 
