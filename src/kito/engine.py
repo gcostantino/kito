@@ -71,6 +71,7 @@ class Engine:
             module: KitoModule instance (can be built or not)
             config: Configuration object
         """
+        self.max_epochs = None
         self.module = module
         self.config = config
 
@@ -190,8 +191,6 @@ class Engine:
             data_pipeline: GenericDataPipeline = None,
             max_epochs: Optional[int] = None,
             callbacks: Optional[List[Callback]] = None,
-            train_verbosity_level: int = 1,
-            val_verbosity_level: int = 1
     ):
         """
         Train the module.
@@ -204,8 +203,6 @@ class Engine:
             data_pipeline: GenericDataPipeline instance
             max_epochs: Maximum epochs (None = use config value)
             callbacks: List of callbacks (None = create smart defaults)
-            train_verbosity_level: Training progress bar verbosity
-            val_verbosity_level: Validation progress bar verbosity
 
         Example (Simple):
             engine.fit(train_loader, val_loader, max_epochs=100)
@@ -234,6 +231,7 @@ class Engine:
         # Get max_epochs
         if max_epochs is None:
             max_epochs = self.config.training.n_train_epochs
+        self.max_epochs = max_epochs
 
         # Wrap model for DDP if needed
         if self.distributed_training:
@@ -272,13 +270,13 @@ class Engine:
                 # Train epoch
                 train_loss = self._train_epoch(
                     train_loader,
-                    train_verbosity_level
+                    self.config.training.train_verbosity_level
                 )
 
                 # Validate epoch
                 val_loss, val_data, val_outputs = self._validate_epoch(
                     val_loader,
-                    val_verbosity_level
+                    self.config.training.val_verbosity_level
                 )
 
                 # Prepare logs
@@ -331,7 +329,7 @@ class Engine:
         self.train_pbar.init(
             len(train_loader),
             verbosity_level,
-            message=f"Epoch {self.current_epoch}"
+            message= f"Epoch {self.current_epoch}/{self.max_epochs}"
         )
 
         # Accumulate loss
@@ -416,7 +414,6 @@ class Engine:
             test_loader,
             save_to_disk: bool = False,
             output_path: Optional[str] = None,
-            verbosity_level: int = 1
     ):
         """
         Run inference on test data.
@@ -428,7 +425,6 @@ class Engine:
             test_loader: Test DataLoader
             save_to_disk: Save predictions to HDF5 file
             output_path: Path to save predictions (if save_to_disk=True)
-            verbosity_level: Progress bar verbosity
 
         Returns:
             numpy.ndarray: Predictions (if save_to_disk=False)
@@ -466,7 +462,7 @@ class Engine:
 
         self.inference_pbar.init(
             len(test_loader),
-            verbosity_level,
+            self.config.training.test_verbosity_level,
             message='Evaluating model in inference mode'
         )
 

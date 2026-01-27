@@ -74,5 +74,5 @@ class ModelCheckpoint(Callback):
             torch.save(state_dict, filepath)
 
             if self.verbose:
-                print(f"Epoch {epoch}: {self.monitor} improved to {current:.4f}, "
+                print(f"\nEpoch {epoch}: {self.monitor} improved to {current:.4f}, "
                       f"saving model to {filepath}")
