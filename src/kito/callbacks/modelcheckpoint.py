@@ -30,7 +30,7 @@ class ModelCheckpoint(Callback):
             monitor: str = 'val_loss',
             save_best_only: bool = True,
             mode: str = 'min',
-            verbose: bool = True
+            verbose: bool = False
     ):
         self.filepath = filepath
         self.monitor = monitor
