@@ -20,7 +20,7 @@ from kito.strategies.progress_bar_strategy import (
 )
 from kito.strategies.readiness_validator import ReadinessValidator
 from kito.utils.decorators import require_mode
-from kito.utils.gpu_utils import assign_device
+from kito.utils.gpu_utils import assign_device, get_available_devices
 
 
 class Engine:
@@ -77,6 +77,9 @@ class Engine:
         self.distributed_training = config.training.distributed_training
         self.work_directory = config.workdir.work_directory
 
+        # Logger
+        self.logger = DDPLogger() if self.distributed_training else DefaultLogger()
+
         # Device and DDP setup
         self.gpu_id = (
             dist.get_rank()
@@ -88,12 +91,20 @@ class Engine:
             if self.distributed_training
             else True
         )
-        self.device = assign_device(self.gpu_id)
-        # Engine assigns device to KitoModule
-        self.module._move_to_device(self.device)
+        device_type = config.training.device_type
+        self.device = assign_device(device_type, self.gpu_id)
 
-        # Logger
-        self.logger = DDPLogger() if self.distributed_training else DefaultLogger()
+        # Log device info
+        available = get_available_devices()
+        self.logger.log_info(
+            f"Device configuration:\n"
+            f"  Requested: {device_type}\n"
+            f"  Assigned: {self.device}\n"
+            f"  Available: {available}"
+        )
+
+        # Assign to module
+        self.module._move_to_device(self.device)
 
         # Progress bars
         self.train_pbar = (

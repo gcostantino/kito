@@ -96,6 +96,21 @@ class TrainingConfig:
     # Weight initialization
     initialize_model_with_saved_weights: bool = False
 
+    # device type initialization
+    device_type: str = "cuda"  # "cuda", "mps", or "cpu"
+
+    def __post_init__(self):
+        """Validate device_type after initialization."""
+        valid_devices = {"cuda", "mps", "cpu"}
+
+        if self.device_type not in valid_devices:
+            raise ValueError(
+                f"Invalid device_type: '{self.device_type}'. "
+                f"Must be one of {valid_devices}."
+            )
+
+        # Normalize to lowercase (user-friendly)
+        self.device_type = self.device_type.lower()
 
 @dataclass
 class ModelConfig:
