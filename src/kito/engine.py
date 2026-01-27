@@ -67,7 +67,7 @@ class Engine:
         Initialize Engine.
 
         Args:
-            module: BaseModule instance (can be built or not)
+            module: KitoModule instance (can be built or not)
             config: Configuration object
         """
         self.module = module
@@ -89,6 +89,8 @@ class Engine:
             else True
         )
         self.device = assign_device(self.gpu_id)
+        # Engine assigns device to KitoModule
+        self.module._move_to_device(self.device)
 
         # Logger
         self.logger = DDPLogger() if self.distributed_training else DefaultLogger()
@@ -130,6 +132,7 @@ class Engine:
                 f"Model '{self.module.model_name}' not built. Building automatically..."
             )
             self.module.build()
+            self.module._move_to_device(self.device)  # Then move to device
             self.logger.log_info("✓ Model built successfully.")
 
         # Auto-setup optimizer if needed
@@ -573,7 +576,8 @@ class Engine:
                 self.module.model,
                 device_ids=[self.gpu_id]
             )
-            self.module.model.to(self.device)
+            # self.module.model.to(self.device)
+            self.module._move_to_device(self.device)
             self.logger.log_info("Model wrapped in DistributedDataParallel.")
 
     # ========================================================================

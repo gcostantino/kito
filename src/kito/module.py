@@ -4,6 +4,8 @@ import torch
 from packaging.version import parse
 from torchsummary import summary as model_summary
 
+from kito.config.moduleconfig import KitoModuleConfig
+
 
 class KitoModule:
     """
@@ -34,17 +36,15 @@ class KitoModule:
         engine.fit(train_loader, val_loader, max_epochs=100)
     """
 
-    def __init__(self, model_name: str, device: torch.device, config=None):
+    def __init__(self, model_name: str, config: KitoModuleConfig = None):
         """
         Initialize BaseModule.
 
         Args:
             model_name: Name of the model
-            device: Device to use (assigned by Engine)
             config: Optional config object for future extensibility
         """
         self.model_name = model_name
-        self.device = device
         self.config = config
 
         # Extract useful config values if provided
@@ -55,8 +55,9 @@ class KitoModule:
             self.learning_rate = None
             self.batch_size = None
 
-        # Model components (set by subclass)
+        # Model components
         self.model = None
+        self.device = None  # set by Engine
         self.model_input_size = None
         self.standard_data_shape = None  # For inference (set by subclass)
         self.optimizer = None
@@ -132,10 +133,20 @@ class KitoModule:
     # SETUP METHODS
     # ========================================================================
 
+    def _move_to_device(self, device: torch.device):
+        """
+        Internal method called by Engine to move model to device.
+
+        Called AFTER build() by Engine.
+        """
+        self.device = device
+        if self.model is not None:
+            self.model.to(device)
+
     def build(self, *args, **kwargs):
         """Build model and move to device."""
         self.build_inner_model(*args, **kwargs)
-        self.model.to(self.device)
+        # self.model.to(self.device)
         self._model_built = True
 
     def associate_optimizer(self, *args, **kwargs):
