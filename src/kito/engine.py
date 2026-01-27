@@ -19,6 +19,7 @@ from kito.strategies.progress_bar_strategy import (
     DDPProgressBarHandler
 )
 from kito.strategies.readiness_validator import ReadinessValidator
+from kito.utils.decorators import require_mode
 from kito.utils.gpu_utils import assign_device
 
 
@@ -166,7 +167,7 @@ class Engine:
     # ========================================================================
     # FIT - Training + Validation
     # ========================================================================
-
+    @require_mode('train')
     def fit(
             self,
             train_loader: DataLoader = None,
@@ -394,7 +395,7 @@ class Engine:
     # ========================================================================
     # PREDICT - Inference
     # ========================================================================
-
+    @require_mode('inference')
     def predict(
             self,
             test_loader,
@@ -589,12 +590,12 @@ class Engine:
             TensorBoardHistograms,
             TensorBoardGraph
         )'''  # vedi se tenerlo cosi' + forse fai interfacce in __init__.py
-        from src.kito.callbacks.modelcheckpoint import ModelCheckpoint
-        from src.kito.callbacks.csv_logger import CSVLogger
-        from src.kito.callbacks.txt_logger import TextLogger
-        from src.kito.callbacks.tensorboard_callbacks import TensorBoardScalars, TensorBoardHistograms, TensorBoardGraph
+        from kito.callbacks.modelcheckpoint import ModelCheckpoint
+        from kito.callbacks.csv_logger import CSVLogger
+        from kito.callbacks.txt_logger import TextLogger
+        from kito.callbacks.tensorboard_callbacks import TensorBoardScalars, TensorBoardHistograms, TensorBoardGraph
 
-        from src.kito.callbacks.tensorboard_callback_images import SimpleImagePlotter
+        from kito.callbacks.tensorboard_callback_images import SimpleImagePlotter
 
         callbacks = []
 
