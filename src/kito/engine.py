@@ -11,6 +11,7 @@ from torch.utils.data import DataLoader
 
 from kito.callbacks.callback_base import Callback, CallbackList
 from kito.callbacks.ddp_aware_callback import DDPAwareCallback
+from kito.config.moduleconfig import CallbacksConfig
 from kito.data.datapipeline import GenericDataPipeline
 from kito.module import KitoModule
 from kito.strategies.logger_strategy import DDPLogger, DefaultLogger
@@ -595,16 +596,9 @@ class Engine:
     # DEFAULT CALLBACKS
     # ========================================================================
 
-    def _create_default_callbacks(self):
+    '''def _create_default_callbacks(self):
         """Create smart default callbacks based on config."""
-        '''from torchmodel.callbacks.callbacks_core import (
-            ModelCheckpoint,
-            CSVLogger,
-            TextLogger,
-            TensorBoardScalars,
-            TensorBoardHistograms,
-            TensorBoardGraph
-        )'''  # vedi se tenerlo cosi' + forse fai interfacce in __init__.py
+          # vedi se tenerlo cosi' + forse fai interfacce in __init__.py
         from kito.callbacks.modelcheckpoint import ModelCheckpoint
         from kito.callbacks.csv_logger import CSVLogger
         from kito.callbacks.txt_logger import TextLogger
@@ -679,8 +673,127 @@ class Engine:
                     )
                 )
 
+        return callbacks'''
+
+    def _create_default_callbacks(self):
+        """Create smart default callbacks based on config."""
+        from kito.callbacks.modelcheckpoint import ModelCheckpoint
+        from kito.callbacks.csv_logger import CSVLogger
+        from kito.callbacks.txt_logger import TextLogger
+        from kito.callbacks.tensorboard_callbacks import (
+            TensorBoardScalars,
+            TensorBoardHistograms,
+            TensorBoardGraph
+        )
+        from kito.callbacks.tensorboard_callback_images import SimpleImagePlotter
+
+        callbacks = []
+
+        # Get callbacks config (with defaults if not provided)
+        cb_config = getattr(self.config, 'callbacks', CallbacksConfig())
+
+        # Setup paths
+        timestamp = datetime.datetime.now().strftime("%d%b%Y-%H%M%S")
+        work_dir = Path(os.path.expandvars(self.work_directory))
+        model_name = self.module.model_name
+        train_codename = self.config.model.train_codename
+
+        # === CSV Logger ===
+        if cb_config.enable_csv_logger:
+            csv_dir = work_dir / "logs" / "csv"
+            csv_dir.mkdir(parents=True, exist_ok=True)
+            csv_path = csv_dir / f"{model_name}_{timestamp}_{train_codename}.csv"
+            callbacks.append(CSVLogger(str(csv_path)))
+
+        # === Text Logger ===
+        if cb_config.enable_text_logger:
+            log_dir = work_dir / "logs" / "text"
+            log_dir.mkdir(parents=True, exist_ok=True)
+            log_path = log_dir / f"{model_name}_{timestamp}_{train_codename}.log"
+            callbacks.append(TextLogger(str(log_path)))
+
+        # === Model Checkpoint ===
+        if cb_config.enable_model_checkpoint and self.config.model.save_model_weights:  # should leave only one of the two
+            weight_dir = work_dir / "weights" / model_name
+            weight_dir.mkdir(parents=True, exist_ok=True)
+            weight_path = weight_dir / f"best_{model_name}_{timestamp}_{train_codename}.pt"
+
+            callbacks.append(
+                ModelCheckpoint(
+                    filepath=str(weight_path),
+                    monitor=cb_config.checkpoint_monitor,
+                    save_best_only=cb_config.checkpoint_save_best_only,
+                    mode=cb_config.checkpoint_mode,
+                    verbose=cb_config.checkpoint_verbose
+                )
+            )
+
+        # === TensorBoard ===
+        if cb_config.enable_tensorboard and self.config.model.log_to_tensorboard:  # should leave only one of the two
+            tb_dir = work_dir / "logs" / "tensorboard" / model_name / timestamp / train_codename
+            tb_dir.mkdir(parents=True, exist_ok=True)
+
+            # Scalars
+            if cb_config.tensorboard_scalars:
+                callbacks.append(TensorBoardScalars(str(tb_dir)))
+
+            # Histograms
+            if cb_config.tensorboard_histograms:
+                callbacks.append(
+                    TensorBoardHistograms(
+                        str(tb_dir),
+                        freq=cb_config.tensorboard_histogram_freq
+                    )
+                )
+
+            # Model graph
+            if cb_config.tensorboard_graph:
+                callbacks.append(
+                    TensorBoardGraph(
+                        str(tb_dir),
+                        input_to_model=lambda: self.module.get_sample_input()
+                    )
+                )
+
+            # Image plotting
+            if cb_config.tensorboard_images:
+                img_dir = tb_dir / 'images'
+                callbacks.append(
+                    SimpleImagePlotter(
+                        log_dir=str(img_dir),
+                        tag=getattr(self.config.model, 'tensorboard_img_id', 'images'),
+                        freq=cb_config.tensorboard_image_freq,
+                        batch_indices=cb_config.tensorboard_batch_indices
+                    )
+                )
+
         return callbacks
 
+    def get_default_callbacks(self):
+        """
+        Get default callbacks configured from config.callbacks.
+
+        Useful when you want to extend defaults with custom callbacks.
+
+        Returns:
+            List of callback instances
+
+        Example:
+            >>> # Get defaults
+            >>> callbacks = engine.get_default_callbacks()
+            >>>
+            >>> # Modify or extend
+            >>> callbacks.append(MyCustomCallback(param=10))
+            >>>
+            >>> # Or modify existing
+            >>> for cb in callbacks:
+            ...     if isinstance(cb, ModelCheckpoint):
+            ...         cb.verbose = False
+            >>>
+            >>> # Use them
+            >>> engine.fit(train_loader, val_loader, callbacks=callbacks)
+        """
+        return self._create_default_callbacks()
     # ========================================================================
     # WEIGHT LOADING (Convenience method)
     # ========================================================================

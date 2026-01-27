@@ -112,6 +112,7 @@ class TrainingConfig:
         # Normalize to lowercase (user-friendly)
         self.device_type = self.device_type.lower()
 
+
 @dataclass
 class ModelConfig:
     """Core model parameters required by KitoModule."""
@@ -148,6 +149,41 @@ class WorkDirConfig:
 
 
 @dataclass
+class CallbacksConfig:
+    """
+    Configuration for Kito's built-in default callbacks.
+
+    For custom callbacks, use instead:
+        callbacks = engine.get_default_callbacks()
+        callbacks.append(MyCustomCallback())
+        engine.fit(..., callbacks=callbacks)
+    """
+
+    # === CSV Logger ===
+    enable_csv_logger: bool = True
+
+    # === Text Logger ===
+    enable_text_logger: bool = True
+
+    # === Model Checkpoint ===
+    enable_model_checkpoint: bool = True
+    checkpoint_monitor: str = 'val_loss'
+    checkpoint_mode: str = 'min'  # 'min' or 'max'
+    checkpoint_save_best_only: bool = True
+    checkpoint_verbose: bool = False
+
+    # === TensorBoard ===
+    enable_tensorboard: bool = False  # Master switch
+    tensorboard_scalars: bool = True
+    tensorboard_histograms: bool = True
+    tensorboard_histogram_freq: int = 5
+    tensorboard_graph: bool = True
+    tensorboard_images: bool = False
+    tensorboard_image_freq: int = 1
+    tensorboard_batch_indices: List[int] = field(default_factory=lambda: [0])
+
+
+@dataclass
 class KitoModuleConfig:
     """
     Base configuration container for KitoModule.
@@ -162,3 +198,4 @@ class KitoModuleConfig:
     model: ModelConfig
     workdir: WorkDirConfig
     data: DataConfig
+    callbacks: CallbacksConfig
