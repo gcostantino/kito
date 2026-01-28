@@ -7,6 +7,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/pytorch-kito)](https://pypi.org/project/pytorch-kito/)
 [![Downloads](https://img.shields.io/pypi/dm/pytorch-kito)](https://pepy.tech/project/pytorch-kito)
+
 Kito is a lightweight PyTorch training library that eliminates boilerplate code. Define your model architecture and loss function - Kito automatically handles training loops, optimization, callbacks, distributed training, and more.
 
 ## ✨ Key Features
