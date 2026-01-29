@@ -65,7 +65,7 @@ class KitoModule(ABC):
 
         # Loss function (set by subclass or from config)
         if config is not None:
-            from kito.utils.loss_utils import get_loss
+            from kito.losses import get_loss
             self.loss = get_loss(config.model.loss)
         else:
             self.loss = None
