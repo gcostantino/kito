@@ -1,4 +1,5 @@
 import os
+from abc import ABC, abstractmethod
 
 import torch
 from packaging.version import parse
@@ -7,7 +8,7 @@ from torchsummary import summary as model_summary
 from kito.config.moduleconfig import KitoModuleConfig
 
 
-class KitoModule:
+class KitoModule(ABC):
     """
     Base module for PyTorch models.
 
@@ -77,7 +78,7 @@ class KitoModule:
     # ========================================================================
     # ABSTRACT METHODS - Must be implemented by subclasses
     # ========================================================================
-
+    @abstractmethod
     def build_inner_model(self, *args, **kwargs):
         """
         Build the model architecture.
