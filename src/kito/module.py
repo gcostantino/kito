@@ -98,8 +98,9 @@ class KitoModule(ABC):
                 self.model_input_size = (3, 64, 64)
                 self.standard_data_shape = (3, 64, 64)
         """
-        raise NotImplementedError("Subclasses must implement build_inner_model().")
+        pass
 
+    @abstractmethod
     def bind_optimizer(self, *args, **kwargs):
         """
         Setup the optimizer.
@@ -114,7 +115,7 @@ class KitoModule(ABC):
                     lr=self.learning_rate
                 )
         """
-        raise NotImplementedError("Subclasses must implement bind_optimizer().")
+        pass
 
     def _check_data_shape(self):
         """
