@@ -146,7 +146,7 @@ class Engine:
             )
             self.module.build()
             self.module._move_to_device(self.device)  # Then move to device
-            self.logger.log_info("✓ Model built successfully.")
+            self.logger.log_info("Model built successfully.")
 
         # Auto-setup optimizer if needed
         if not self.module.is_optimizer_set:
@@ -155,7 +155,7 @@ class Engine:
             )
             self.module.associate_optimizer()
             self.logger.log_info(
-                f"✓ Optimizer configured: {self.module.optimizer.__class__.__name__}"
+                f"Optimizer configured: {self.module.optimizer.__class__.__name__}"
             )
 
     def _ensure_model_ready_for_inference(self, weight_path: Optional[str] = None):
@@ -171,7 +171,7 @@ class Engine:
                 f"Model '{self.module.model_name}' not built. Building automatically..."
             )
             self.module.build()
-            self.logger.log_info("✓ Model built successfully.")
+            self.logger.log_info("Model built successfully.")
 
         # Check weights are loaded (don't auto-load, user must be explicit)
         if not self.module.is_weights_loaded:
@@ -411,7 +411,8 @@ class Engine:
     @require_mode('inference')
     def predict(
             self,
-            test_loader,
+            test_loader: DataLoader = None,
+            data_pipeline: GenericDataPipeline = None,
             save_to_disk: bool = False,
             output_path: Optional[str] = None,
     ):
@@ -423,6 +424,7 @@ class Engine:
 
         Args:
             test_loader: Test DataLoader
+            data_pipeline: Data pipeline for inference
             save_to_disk: Save predictions to HDF5 file
             output_path: Path to save predictions (if save_to_disk=True)
 
@@ -439,6 +441,12 @@ class Engine:
         """
         # ===== HYBRID: Auto-setup if needed =====
         self._ensure_model_ready_for_inference()
+
+        if data_pipeline is not None:
+            test_loader = data_pipeline.test_dataloader()
+
+        if test_loader is None and data_pipeline is None:
+            raise ValueError("Must provide either test_loader or data_pipeline")
 
         # Validate (will warn if weights not loaded)
         ReadinessValidator.check_for_inference(self.module)
@@ -741,9 +749,9 @@ class Engine:
             'n_train_epochs': max_epochs,
             'learning_rate': self.module.learning_rate,
             'work_directory': self.work_directory,
-            'save_model_weights': self.config.model.save_model_weights,
+            'model_checkpointing': self.config.callbacks.enable_model_checkpoint,
             'distributed_training': self.distributed_training,
-            'callbacks': num_callbacks
+            'callbacks': num_callbacks  # this list could be extended
         }
 
         self.logger.log_info(
