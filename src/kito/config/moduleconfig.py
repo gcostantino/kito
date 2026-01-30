@@ -22,7 +22,7 @@ class PreprocessingStepConfig:
         ...     params={'mean': 0.5, 'std': 0.2}
         ... )
     """
-    type: str
+    name: str
     params: Dict[str, Any] = field(default_factory=dict)
 
 
