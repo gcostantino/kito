@@ -338,7 +338,7 @@ class Engine:
         for batch_idx, batch in enumerate(train_loader):
             # Check data shape on first batch
             if self._first_train_batch:
-                self.module._check_data_shape()
+                self.module._check_data_shape(batch)
                 self._first_train_batch = False
 
             # ===== Call module's training_step =====

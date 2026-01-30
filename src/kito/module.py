@@ -117,7 +117,7 @@ class KitoModule(ABC):
         """
         pass
 
-    def _check_data_shape(self):
+    def _check_data_shape(self, batch):
         """
         Check data shape on first batch.
 
@@ -188,8 +188,8 @@ class KitoModule(ABC):
         inputs, targets = batch
 
         # Move to device
-        inputs = self.send_data_to_device(inputs)
-        targets = targets.to(self.device)
+        inputs = self.send_data_to_device(inputs)  # maybe change into 'send_to_device'
+        targets = self.send_data_to_device(targets)
 
         # Zero gradients
         self.optimizer.zero_grad()
