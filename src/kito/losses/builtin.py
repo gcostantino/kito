@@ -57,7 +57,7 @@ def _auto_register_pytorch_losses():
     """
     # Define short names for common losses
     SHORT_NAMES = {
-        'MSELoss': 'mse',
+        'MSELoss': ['l2', 'mae'],
         'L1Loss': ['l1', 'mae'],
         'CrossEntropyLoss': 'cross_entropy',
         'NLLLoss': 'nll',
