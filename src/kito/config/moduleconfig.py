@@ -130,10 +130,10 @@ class ModelConfig:
     loss: Union[str, dict] = field(default_factory=dict)
 
     # Callbacks and logging
-    log_to_tensorboard: bool = False
-    save_model_weights: bool = False
-    text_logging: bool = False
-    csv_logging: bool = False
+    #log_to_tensorboard: bool = False
+    #save_model_weights: bool = False
+    #text_logging: bool = False
+    #csv_logging: bool = False
     train_codename: str = "experiment"
 
     # Weights
