@@ -151,7 +151,7 @@ class ModelConfig:
 @dataclass
 class WorkDirConfig:
     """Working directory configuration."""
-    work_directory: str
+    work_directory: str = ""
 
 
 @dataclass
@@ -200,8 +200,8 @@ class KitoModuleConfig:
     - workdir: Output directories
     - data: Dataset and preprocessing
     """
-    training: TrainingConfig
-    model: ModelConfig
-    workdir: WorkDirConfig
-    data: DataConfig
-    callbacks: CallbacksConfig
+    training: TrainingConfig = field(default_factory=TrainingConfig)
+    model: ModelConfig = field(default_factory=ModelConfig)
+    workdir: WorkDirConfig = field(default_factory=WorkDirConfig)
+    data: DataConfig = field(default_factory=DataConfig)
+    callbacks: CallbacksConfig = field(default_factory=CallbacksConfig)
