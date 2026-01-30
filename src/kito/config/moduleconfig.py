@@ -186,7 +186,7 @@ class CallbacksConfig:
     tensorboard_graph: bool = True
     tensorboard_images: bool = False
     tensorboard_image_freq: int = 1
-    tensorboard_batch_indices: List[int] = field(default_factory=lambda: [0])
+    tensorboard_batch_indices: List[int] = field(default_factory=lambda: [0])  # redundant, change that in the future
 
 
 @dataclass
