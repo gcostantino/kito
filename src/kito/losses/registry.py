@@ -94,15 +94,26 @@ class LossRegistry:
         # Normalize to lowercase for matching
         normalized_name = name.lower()
 
-        if normalized_name not in cls._registry:
-            available = ", ".join(sorted(cls._registry.keys()))
-            raise ValueError(
-                f"Loss '{name}' not found in registry.\n"
-                f"Available losses: {available}\n"
-                f"Tip: Register custom losses with @LossRegistry.register('name')"
-            )
+        # Check if already registered
+        if normalized_name in cls._registry:
+            return cls._registry[normalized_name]
 
-        return cls._registry[normalized_name]
+        # try auto-discovery if not found before throwing an error
+        try:
+            from .utils import _auto_discover_loss
+            if _auto_discover_loss(name, verbose=True):
+                # Found it! Return now
+                return cls._registry[normalized_name]
+        except ImportError:
+            pass  # utils not available (shouldn't happen in normal use)
+
+        # Still not found - raise error
+        available = ", ".join(sorted(cls._registry.keys()))
+        raise ValueError(
+            f"Loss '{name}' not found in registry.\n"
+            f"Available losses: {available}\n"
+            f"Tip: Register custom losses with @LossRegistry.register('name')"
+        )
 
     @classmethod
     def create(cls, name: str, **kwargs) -> nn.Module:

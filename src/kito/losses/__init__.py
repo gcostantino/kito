@@ -17,14 +17,15 @@ from . import builtin
 # Import custom losses (triggers registration)
 from . import custom
 
-# Import backward compatible function
-from .utils import get_loss
+# Import utilities
+from .utils import get_loss, discover_losses
 
 # Public API
 __all__ = [
     'LossRegistry',
     'get_loss',  # Backward compatible
+    'discover_losses',   # Explicit discovery helpe
 ]
 
 # Print available losses on import (optional - for debugging)
-# print(f"✓ Kito losses loaded. Available: {', '.join(LossRegistry.list_available())}")
+# print(f"Kito losses loaded. Available: {', '.join(LossRegistry.list_available())}")
