@@ -227,7 +227,7 @@ class KitoModule(ABC):
 
         # Move to device
         inputs = self.send_data_to_device(inputs)
-        targets = targets.to(self.device)
+        targets = self.send_data_to_device(targets)
 
         # Forward pass (no gradients)
         outputs = self.pass_data_through_model(inputs)
