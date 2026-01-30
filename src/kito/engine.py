@@ -638,7 +638,7 @@ class Engine:
             callbacks.append(TextLogger(str(log_path)))
 
         # === Model Checkpoint ===
-        if cb_config.enable_model_checkpoint and self.config.model.save_model_weights:  # should leave only one of the two
+        if cb_config.enable_model_checkpoint:
             weight_dir = work_dir / "weights" / model_name
             weight_dir.mkdir(parents=True, exist_ok=True)
             weight_path = weight_dir / f"best_{model_name}_{timestamp}_{train_codename}.pt"
