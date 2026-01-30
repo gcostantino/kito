@@ -100,7 +100,6 @@ class GenericDataPipeline(BaseDataPipeline):
     """
     Generic DataModule that works with any registered dataset.
 
-    This is the standard DataModule used by DataModuleFactory.
     It handles:
     - Loading dataset from registry
     - Applying preprocessing pipeline
