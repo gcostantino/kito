@@ -4,7 +4,7 @@ Base configuration system for KitoModule framework.
 Users can extend these base configs with their own custom parameters.
 """
 from dataclasses import dataclass, field
-from typing import Tuple, List, Optional, Dict, Any
+from typing import Tuple, List, Optional, Dict, Any, Union
 
 
 @dataclass
@@ -115,13 +115,19 @@ class TrainingConfig:
 
 @dataclass
 class ModelConfig:
-    """Core model parameters required by KitoModule."""
+    """Core model parameters required by KitoModule.
+
+    The loss definition supports:
+    1. Simple string: 'mse'
+    2. Dict with name: {'name': 'mse'}
+    3. Dict with params: {'name': 'weighted_mse', 'params': {'weight': 2.0}}
+    4. Dict with inline params: {'name': 'weighted_mse', 'weight': 2.0}"""
 
     # Data dimensions
     input_data_size: Tuple[int, ...]  # Flexible shape
 
     # Loss and optimization
-    loss: str = ""
+    loss: Union[str, dict] = field(default_factory=dict)
 
     # Callbacks and logging
     log_to_tensorboard: bool = False
