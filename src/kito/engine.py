@@ -121,6 +121,9 @@ class Engine:
         )
         self.inference_pbar = StandardProgressBarHandler()
 
+        self.timestamp = datetime.datetime.now().strftime("%d%b%Y-%H%M%S")
+        self.train_run_id = self.timestamp  # Alias for clarity
+
         # Training state
         self.current_epoch = 0
         self.stop_training = False
@@ -252,9 +255,19 @@ class Engine:
         if self.distributed_training:
             self._wrap_model_ddp()
 
-        # Setup callbacks
-        if callbacks is None:
-            callbacks = self._create_default_callbacks()
+        # create defaults
+        default_callbacks = self._create_default_callbacks()
+
+        # merge with user callbacks
+        if callbacks is not None:
+            if isinstance(callbacks, Callback):
+                callbacks = [callbacks]
+            callbacks = default_callbacks + callbacks
+        else:
+            callbacks = default_callbacks
+
+        # autoconfigure callbacks with Engine context
+        callbacks = self._setup_callbacks(callbacks)
 
         # Wrap callbacks for DDP
         if self.distributed_training:
@@ -344,7 +357,7 @@ class Engine:
         self.train_pbar.init(
             len(train_loader),
             verbosity_level,
-            message= f"Epoch {self.current_epoch}/{self.max_epochs}"
+            message=f"Epoch {self.current_epoch}/{self.max_epochs}"
         )
 
         # Accumulate loss
@@ -615,6 +628,33 @@ class Engine:
     # DEFAULT CALLBACKS
     # ========================================================================
 
+    def _setup_callbacks(self, callbacks: List[Callback]) -> List[Callback]:
+        """
+        Setup callbacks with Engine context.
+
+        Passes shared timestamp and other Engine attributes to callbacks.
+        This ensures all callbacks use the same parameters (e.g., timestamp) for the training run.
+
+        Args:
+            callbacks: List of callback instances
+
+        Returns:
+            Configured callbacks
+        """
+        # create context dict with shared values
+        context = {
+            'timestamp': self.timestamp,
+            'work_directory': self.work_directory,
+            'model_name': self.module.model_name,
+            'train_codename': self.config.model.train_codename,
+        }
+
+        for callback in callbacks:
+            if hasattr(callback, 'setup'):
+                callback.setup(engine=self, **context)
+
+        return callbacks
+
     def _create_default_callbacks(self):
         """Create smart default callbacks based on config."""
         from kito.callbacks.modelcheckpoint import ModelCheckpoint
@@ -698,16 +738,46 @@ class Engine:
             # Image plotting
             if cb_config.tensorboard_images:
                 img_dir = tb_dir / 'images'
-                callbacks.append(
-                    SimpleImagePlotter(
-                        log_dir=str(img_dir),
-                        tag=getattr(self.config.model, 'tensorboard_img_id', 'images'),
-                        freq=cb_config.tensorboard_image_freq,
-                        batch_indices=cb_config.tensorboard_batch_indices
-                    )
+
+                # use user-specified plotter class or auto-detect
+                plotter_class = self._get_image_plotter_class(cb_config)
+                plotter = plotter_class(
+                    log_dir=str(img_dir),  # log_dir can also be auto-configured by setup()
+                    tag=getattr(self.config.model, 'tensorboard_img_id', None),
+                    freq=cb_config.tensorboard_image_freq,
+                    batch_indices=cb_config.tensorboard_batch_indices
                 )
 
+                callbacks.append(plotter)
+
         return callbacks
+
+    def _get_image_plotter_class(self, cb_config):
+        """
+        Get the image plotter class to use.
+
+        Priority:
+        1. User-specified class in config
+        2. Module's preferred plotter (if module defines one)
+        3. SimpleImagePlotter (default fallback)
+
+        Args:
+            cb_config: CallbacksConfig instance
+
+        Returns:
+            Image plotter class
+        """
+        # priority 1: explicitly specified in config
+        if cb_config.image_plotter_class is not None:
+            return cb_config.image_plotter_class
+
+        # priority 2: module recommends a plotter
+        if hasattr(self.module, 'get_preferred_image_plotter'):
+            return self.module.get_preferred_image_plotter()
+
+        # priority 3: default fallback
+        from kito.callbacks.tensorboard_callback_images import SimpleImagePlotter
+        return SimpleImagePlotter
 
     def get_default_callbacks(self):
         """
@@ -734,6 +804,7 @@ class Engine:
             >>> engine.fit(train_loader, val_loader, callbacks=callbacks)
         """
         return self._create_default_callbacks()
+
     # ========================================================================
     # WEIGHT LOADING (Convenience method)
     # ========================================================================
