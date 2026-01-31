@@ -176,7 +176,7 @@ class Engine:
         # Check weights are loaded (don't auto-load, user must be explicit)
         if not self.module.is_weights_loaded:
             self.logger.log_warning(
-                f"⚠ Weights not loaded for '{self.module.model_name}'. "
+                f"Weights not loaded for '{self.module.model_name}'. "
                 "Call module.load_weights() or engine.load_weights() before inference."
             )
 
@@ -654,7 +654,7 @@ class Engine:
             )
 
         # === TensorBoard ===
-        if cb_config.enable_tensorboard and self.config.model.log_to_tensorboard:  # should leave only one of the two
+        if cb_config.enable_tensorboard:
             tb_dir = work_dir / "logs" / "tensorboard" / model_name / timestamp / train_codename
             tb_dir.mkdir(parents=True, exist_ok=True)
 
