@@ -16,40 +16,113 @@ class BaseImagePlotter(Callback):
     """
     Base class for plotting images to TensorBoard.
 
-    Subclasses must implement `create_figure()` to define custom plotting logic.
+    Smart defaults:
+    - log_dir: If None, Engine will auto-configure based on work_dir/model_name
+    - tag: Default tag based on callback type
+    - freq: Plot every epoch by default
+    - batch_indices: Visualize first sample by default
 
-    Args:
-        log_dir: Directory for TensorBoard logs
-        tag: Tag for the image in TensorBoard
-        freq: Frequency of plotting (every N epochs)
-        batch_indices: Which batch indices to visualize (e.g., [0, 1, 2])
+    Users can:
+    1. Use defaults (simplest): plotter = TimeSeriesPlotter()
+    2. Override some: plotter = TimeSeriesPlotter(freq=10)
+    3. Override all: plotter = TimeSeriesPlotter(log_dir='/custom/path', ...)
 
     Example:
-        class MyCustomPlotter(BaseImagePlotter):
-            def create_figure(self, val_data, val_outputs, epoch, **kwargs):
-                fig, ax = plt.subplots()
-                # Your custom plotting logic here
-                ax.imshow(val_outputs[0].cpu().numpy())
-                return fig
+        # Simplest - all defaults
+        plotter = TimeSeriesPlotter()
+        engine.fit(train_loader, val_loader, callbacks=[plotter])
 
-        plotter = MyCustomPlotter('logs/images', tag='predictions')
+        # Override some parameters
+        plotter = TimeSeriesPlotter(freq=10, batch_indices=[0, 1, 2])
+        engine.fit(train_loader, val_loader, callbacks=[plotter])
     """
 
     def __init__(
             self,
-            log_dir: str,
-            tag: str = 'validation_images',
+            log_dir: Optional[str] = None,  # optional - Engine will provide
+            tag: Optional[str] = None,  # optional - subclass provides default
             freq: int = 1,
             batch_indices: Optional[List[int]] = None
     ):
-        self.log_dir = log_dir
-        self.tag = tag
+        self.log_dir = log_dir  # will be set by Engine if None
+        self.tag = tag or self._get_default_tag()
         self.freq = freq
         self.batch_indices = batch_indices or [0]
         self.writer = None
+        self._auto_configured = False
+
+    def _get_default_tag(self) -> str:
+        """
+        Get default tag based on callback class name.
+
+        Subclasses can override this.
+        """
+        return self.__class__.__name__.lower().replace('plotter', '')
+
+    def setup(self, engine, timestamp=None, work_directory=None,
+              model_name=None, train_codename=None, **kwargs):
+        """
+        Setup callback with Engine context.
+
+        Args:
+            engine: Engine instance
+            timestamp: Shared timestamp for this training run (from Engine)
+            work_directory: Work directory (from Engine config)
+            model_name: Model name (from Engine module)
+            train_codename: Training code name (from Engine config)
+            **kwargs: Additional context
+        """
+        # auto-configure log_dir if not provided by user
+        if self.log_dir is None:
+            self.log_dir = self._build_default_log_dir(
+                timestamp=timestamp,
+                work_directory=work_directory,
+                model_name=model_name,
+                train_codename=train_codename
+            )
+            self._auto_configured = True
+
+        # Create directory if needed
+        from pathlib import Path
+        Path(self.log_dir).mkdir(parents=True, exist_ok=True)
+
+    def _build_default_log_dir(
+            self,
+            timestamp: str,
+            work_directory: str,
+            model_name: str,
+            train_codename: str
+    ) -> str:
+        """
+        Build default log directory using shared timestamp.
+
+        Args:
+            timestamp: Shared timestamp from Engine
+            work_directory: Work directory
+            model_name: Model name
+            train_codename: Training code name
+
+        Returns:
+            Default log directory path
+        """
+        from pathlib import Path
+
+        log_dir = (
+                Path(work_directory) / "logs" / "tensorboard" / model_name /
+                timestamp / train_codename / "images"
+        )
+
+        return str(log_dir)
 
     def on_train_begin(self, engine, model, **kwargs):
         """Initialize TensorBoard writer."""
+        # Ensure setup was called
+        if not self._auto_configured and self.log_dir is None:
+            raise RuntimeError(
+                f"{self.__class__.__name__}: log_dir not set! "
+                "This should be auto-configured by Engine."
+            )
+
         self.writer = SummaryWriter(self.log_dir)
 
     @abstractmethod
@@ -83,7 +156,8 @@ class BaseImagePlotter(Callback):
             return
 
         # Create figure(s)
-        figures = self.create_figure(val_data, val_outputs, epoch, **kwargs)
+        # figures = self.create_figure(val_data, val_outputs, epoch, **kwargs)
+        figures = self.create_figure(val_data, val_outputs, epoch)
 
         # Log to TensorBoard
         if isinstance(figures, (list, tuple)):
@@ -154,7 +228,6 @@ class SimpleImagePlotter(BaseImagePlotter):
         # Extract input and target
         val_input = val_data[0]  # (B, C, H, W) or (B, T, C, H, W)
         val_target = val_data[1]
-
         # Create figures for each batch index
         figures = []
         for idx in self.batch_indices:

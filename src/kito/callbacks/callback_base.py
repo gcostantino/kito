@@ -18,6 +18,29 @@ class Callback(ABC):
     override the ones you care about.
     """
 
+    def setup(self, engine, **kwargs):
+        """
+        Setup callback with Engine context.
+
+        Called by Engine before training starts.
+        Override this to auto-configure your callback.
+
+        Args:
+            engine: Engine instance
+            **kwargs: Additional context
+
+        Example:
+            class MyCallback(Callback):
+                def __init__(self, output_dir=None):
+                    self.output_dir = output_dir
+
+                def setup(self, engine, **kwargs):
+                    if self.output_dir is None:
+                        # Auto-configure from Engine
+                        self.output_dir = engine.work_directory + '/outputs'
+        """
+        pass
+
     def on_train_begin(self, engine, model, **kwargs):
         """Called at the beginning of training."""
         pass
