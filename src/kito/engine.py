@@ -148,6 +148,21 @@ class Engine:
             self.module._move_to_device(self.device)  # Then move to device
             self.logger.log_info("Model built successfully.")
 
+        # load pretrained weights if specified (for transfer learning / fine-tuning)
+        if self.config.training.initialize_model_with_saved_weights:
+            weight_path = self.config.model.weight_load_path
+            ReadinessValidator.check_pretrained_weights_config(weight_path)
+            try:
+                self.load_weights(self.config.model.weight_load_path)
+                self.logger.log_info(
+                    f"Successfully loaded pretrained weights from: {weight_path}"
+                )
+            except Exception as e:
+                raise RuntimeError(
+                    f"Failed to load pretrained weights from '{weight_path}'\n"
+                    f"Error: {e}"
+                ) from e
+
         # Auto-setup optimizer if needed
         if not self.module.is_optimizer_set:
             self.logger.log_info(

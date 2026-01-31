@@ -83,3 +83,60 @@ class ReadinessValidator:
         """
         if train_loader is None and val_loader is None and test_loader is None:
             raise ValueError("At least one data loader must be provided")
+
+    @staticmethod
+    def check_pretrained_weights_config(weight_path):
+        """
+        Validate pretrained weights configuration.
+
+        Args:
+            weight_path: path to pretrained weights
+
+        Raises:
+            ValueError: If weight_load_path not specified
+            FileNotFoundError: If weight file doesn't exist
+            ValueError: If weight file has wrong extension or is invalid
+            PermissionError: If weight file is not readable
+        """
+
+        # Check path specified
+        if not weight_path or weight_path == '':
+            raise ValueError(
+                "initialize_model_with_saved_weights=True but weight_load_path is not specified!\n"
+                "Please provide config.model.weight_load_path = '/path/to/weights.pt'"
+            )
+
+        # Convert to Path for validation
+        from pathlib import Path
+        weight_file = Path(weight_path)
+
+        # Check file exists
+        if not weight_file.exists():
+            raise FileNotFoundError(
+                f"Pretrained weight file not found: '{weight_path}'\n"
+                f"Please check the path in your configuration.\n"
+                f"Expected file at: {weight_file.absolute()}"
+            )
+
+        # Check it's a file (not directory)
+        if not weight_file.is_file():
+            raise ValueError(
+                f"Weight path is not a file: '{weight_path}'\n"
+                f"Expected a .pt file, got a directory."
+            )
+
+        # Check extension
+        if weight_file.suffix != '.pt':
+            raise ValueError(
+                f"Invalid weight file extension: '{weight_file.suffix}'\n"
+                f"Expected .pt file, got: {weight_file.name}\n"
+                f"Valid PyTorch weight files must have .pt extension."
+            )
+
+        # Check file is readable
+        import os
+        if not os.access(weight_file, os.R_OK):
+            raise PermissionError(
+                f"Weight file exists but is not readable: '{weight_path}'\n"
+                f"Check file permissions."
+            )
