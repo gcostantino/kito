@@ -1,5 +1,8 @@
-# Kito
+<p align="center">
+  <img src="assets/kito_simplelogo.png" alt="Kito Logo" width="200"/>
+</p>
 
+---
 **Effortless PyTorch training - define your model, Kito handles the rest.**
 
 [![Tests](https://github.com/gcostantino/kito/actions/workflows/tests.yml/badge.svg)](https://github.com/gcostantino/kito/actions)
