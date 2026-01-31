@@ -4,7 +4,10 @@ Base configuration system for KitoModule framework.
 Users can extend these base configs with their own custom parameters.
 """
 from dataclasses import dataclass, field
-from typing import Tuple, List, Optional, Dict, Any, Union
+from typing import Tuple, List, Optional, Dict, Any, Union, Type, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from kito.callbacks.tensorboard_callback_images import BaseImagePlotter
 
 
 @dataclass
@@ -188,6 +191,8 @@ class CallbacksConfig:
     tensorboard_image_freq: int = 1
     tensorboard_batch_indices: List[int] = field(default_factory=lambda: [0])  # redundant, change that in the future
 
+    # specify which plotter class to use
+    image_plotter_class: Optional[Type['BaseImagePlotter']] = None  # None = auto-detect
 
 @dataclass
 class KitoModuleConfig:
