@@ -440,9 +440,7 @@ class Engine:
     def predict(
             self,
             test_loader: DataLoader = None,
-            data_pipeline: GenericDataPipeline = None,
-            save_to_disk: bool = False,
-            output_path: Optional[str] = None,
+            data_pipeline: GenericDataPipeline = None
     ):
         """
         Run inference on test data.
@@ -453,12 +451,10 @@ class Engine:
         Args:
             test_loader: Test DataLoader
             data_pipeline: Data pipeline for inference
-            save_to_disk: Save predictions to HDF5 file
-            output_path: Path to save predictions (if save_to_disk=True)
 
         Returns:
-            numpy.ndarray: Predictions (if save_to_disk=False)
-            None: If save_to_disk=True
+            numpy.ndarray: Predictions (if config.model.save_inference_to_disk=False)
+            None: If config.model.save_inference_to_disk=True
 
         Example:
             # Load weights first (explicit)
@@ -479,6 +475,9 @@ class Engine:
         # Validate (will warn if weights not loaded)
         ReadinessValidator.check_for_inference(self.module)
         ReadinessValidator.check_data_loaders(test_loader=test_loader)
+
+        save_to_disk = self.config.model.save_inference_to_disk
+        output_path = self.config.model.inference_filename
 
         if save_to_disk and output_path is None:
             raise ValueError("output_path required when save_to_disk=True")
