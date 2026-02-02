@@ -118,10 +118,10 @@ class GenericDataPipeline(BaseDataPipeline):
     """
 
     def __init__(
-        self,
-        config: KitoModuleConfig,
-        dataset: Optional[KitoDataset] = None,
-        preprocessing: Optional[Preprocessing] = None
+            self,
+            config: KitoModuleConfig,
+            dataset: Optional[KitoDataset] = None,
+            preprocessing: Optional[Preprocessing] = None
     ):
         super().__init__(config)
         self._dataset = dataset  # Pre-instantiated dataset
@@ -206,52 +206,67 @@ class GenericDataPipeline(BaseDataPipeline):
         }
 
         # Train loader (with shuffling)
-        if distributed:
-            train_sampler = DistributedSampler(self.train_dataset, shuffle=True)
-            self.train_loader = DataLoader(
-                self.train_dataset,
-                sampler=train_sampler,
-                shuffle=False,  # Don't shuffle when using sampler
-                **loader_kwargs
-            )
+        if self.train_dataset is not None and len(self.train_dataset) > 0:
+            if distributed:
+                train_sampler = DistributedSampler(self.train_dataset, shuffle=True)
+                self.train_loader = DataLoader(
+                    self.train_dataset,
+                    sampler=train_sampler,
+                    shuffle=False,  # Don't shuffle when using sampler
+                    **loader_kwargs
+                )
+            else:
+                self.train_loader = DataLoader(
+                    self.train_dataset,
+                    shuffle=True,
+                    **loader_kwargs
+                )
         else:
-            self.train_loader = DataLoader(
-                self.train_dataset,
-                shuffle=True,
-                **loader_kwargs
-            )
+            self.train_loader = None  # no loader if dataset is empty
+            if self.train_dataset is not None:
+                print("Warning: Training dataset is empty. Skipping train_loader creation.")
 
         # Val loader (no shuffling)
-        if distributed:
-            val_sampler = DistributedSampler(self.val_dataset, shuffle=False)
-            self.val_loader = DataLoader(
-                self.val_dataset,
-                sampler=val_sampler,
-                shuffle=False,
-                **loader_kwargs
-            )
+        if self.val_dataset is not None and len(self.val_dataset) > 0:
+            if distributed:
+                val_sampler = DistributedSampler(self.val_dataset, shuffle=False)
+                self.val_loader = DataLoader(
+                    self.val_dataset,
+                    sampler=val_sampler,
+                    shuffle=False,
+                    **loader_kwargs
+                )
+            else:
+                self.val_loader = DataLoader(
+                    self.val_dataset,
+                    shuffle=False,
+                    **loader_kwargs
+                )
         else:
-            self.val_loader = DataLoader(
-                self.val_dataset,
-                shuffle=False,
-                **loader_kwargs
-            )
+            self.val_loader = None
+            if self.val_dataset is not None:
+                print("Warning: Validation dataset is empty. Skipping val_loader creation.")
 
         # Test loader (no shuffling)
-        if distributed:
-            test_sampler = DistributedSampler(self.test_dataset, shuffle=False)
-            self.test_loader = DataLoader(
-                self.test_dataset,
-                sampler=test_sampler,
-                shuffle=False,
-                **loader_kwargs
-            )
+        if self.test_dataset is not None and len(self.test_dataset) > 0:
+            if distributed:
+                test_sampler = DistributedSampler(self.test_dataset, shuffle=False)
+                self.test_loader = DataLoader(
+                    self.test_dataset,
+                    sampler=test_sampler,
+                    shuffle=False,
+                    **loader_kwargs
+                )
+            else:
+                self.test_loader = DataLoader(
+                    self.test_dataset,
+                    shuffle=False,
+                    **loader_kwargs
+                )
         else:
-            self.test_loader = DataLoader(
-                self.test_dataset,
-                shuffle=False,
-                **loader_kwargs
-            )
+            self.test_loader = None
+            if self.test_dataset is not None:
+                print("Warning: Test dataset is empty. Skipping test_loader creation.")
 
     def train_dataloader(self) -> DataLoader:
         """Return training DataLoader."""
