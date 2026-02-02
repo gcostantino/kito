@@ -17,7 +17,7 @@ class ReadinessValidator:
         Check if module is ready for training.
 
         Args:
-            module: BaseModule instance
+            module: KitoModule instance
 
         Raises:
             RuntimeError: If module is not ready
@@ -45,7 +45,7 @@ class ReadinessValidator:
         Check if module is ready for inference.
 
         Args:
-            module: BaseModule instance
+            module: KitoModule instance
             weight_path: Optional weight path to check
 
         Raises:
@@ -67,6 +67,23 @@ class ReadinessValidator:
             import os
             if not os.path.exists(weight_path):
                 raise FileNotFoundError(f"Weight file not found: {weight_path}")
+
+    @staticmethod
+    def check_model_built(module):
+        """
+        Check if model is built.
+
+        Args:
+            module: KitoModule instance
+
+        Raises:
+            RuntimeError: If model is not built
+        """
+        if not module.is_built:
+            raise RuntimeError(
+                f"Module '{module.model_name}' not built. "
+                "Call module.build() before this operation."
+            )
 
     @staticmethod
     def check_data_loaders(train_loader=None, val_loader=None, test_loader=None):

@@ -6,6 +6,7 @@ from packaging.version import parse
 from torchsummary import summary as model_summary
 
 from kito.config.moduleconfig import KitoModuleConfig
+from kito.utils.decorators import require_model_built
 
 
 class KitoModule(ABC):
@@ -365,7 +366,7 @@ class KitoModule(ABC):
     # ========================================================================
     # WEIGHTS (Model-specific operations)
     # ========================================================================
-
+    @require_model_built
     def load_weights(self, weight_path: str, strict: bool = True):
         """
         Load model weights.

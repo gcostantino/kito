@@ -819,6 +819,7 @@ class Engine:
             weight_path: Path to weight file
             strict: Strict loading
         """
+        ReadinessValidator.check_model_built(self.module)
         self.module.load_weights(weight_path, strict)
         self.logger.log_info(f"Loaded weights from '{weight_path}' successfully.")
 

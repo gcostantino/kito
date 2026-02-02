@@ -43,3 +43,12 @@ def require_mode(mode: str):
         return wrapper
 
     return decorator
+
+def require_model_built(method):
+    """Decorator to ensure the configuration is finalized before proceeding."""
+
+    def wrapper(self, *args, **kwargs):
+        if not self._model_built:
+            raise RuntimeError("Model not built. Call module.build() before this operation.")
+        return method(self, *args, **kwargs)
+    return wrapper
