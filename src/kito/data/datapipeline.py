@@ -189,9 +189,12 @@ class GenericDataPipeline(BaseDataPipeline):
         Create DataLoaders with proper settings.
 
         Handles:
-        - Distributed training (DistributedSampler)
-        - num_workers, pin_memory, etc.
-        - Batch size from config
+            - Distributed training (DistributedSampler)
+            - num_workers, pin_memory, etc.
+            - Batch size from config
+
+        Raises:
+            ValueError: If all datasets are empty or None
         """
         batch_size = self.config.training.batch_size
         distributed = self.config.training.distributed_training
@@ -267,6 +270,12 @@ class GenericDataPipeline(BaseDataPipeline):
             self.test_loader = None
             if self.test_dataset is not None:
                 print("Warning: Test dataset is empty. Skipping test_loader creation.")
+
+            # validation: at least one loader must exist
+            if self.train_loader is None and self.val_loader is None and self.test_loader is None:
+                raise ValueError(
+                    "All dataloaders are None! At least one of (train_dataset, val_dataset, test_dataset) "
+                    "must be provided and non-empty.")
 
     def train_dataloader(self) -> DataLoader:
         """Return training DataLoader."""
