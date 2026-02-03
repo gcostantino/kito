@@ -156,15 +156,17 @@ class Engine:
         # Assign to module
         self.module._move_to_device(self.device)
 
-        # Progress bars
+        # Progress bars - only use DDP handlers when DDP is actually running
+        ddp_initialized = dist.is_available() and dist.is_initialized()
+
         self.train_pbar = (
             DDPProgressBarHandler()
-            if self.distributed_training
+            if (self.distributed_training and ddp_initialized)
             else StandardProgressBarHandler()
         )
         self.val_pbar = (
             DDPProgressBarHandler()
-            if self.distributed_training
+            if (self.distributed_training and ddp_initialized)
             else StandardProgressBarHandler()
         )
         self.inference_pbar = StandardProgressBarHandler()
