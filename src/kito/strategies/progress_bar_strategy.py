@@ -1,6 +1,5 @@
 from abc import ABC
 
-import pkbar
 import torch
 
 
@@ -22,6 +21,7 @@ class StandardProgressBarHandler(BaseProgressBarHandler):
         # print("Epoch {}/{}".format(epoch + 1, self.n_train_epochs))  # might be replaced by logger
 
     def init(self, n_target_elements, verbosity_level, message=None):
+        import pkbar
         if message is not None:
             print(message)
         self.progress_bar = pkbar.Kbar(target=n_target_elements, always_stateful=False, width=25,
@@ -42,6 +42,7 @@ class DDPProgressBarHandler(BaseProgressBarHandler):
         # print("Epoch {}/{}".format(epoch + 1, self.n_train_epochs))  # might be replaced by logger
 
     def init(self, n_target_elements, verbosity_level, message=None):
+        import pkbar
         if self.is_driver:
             if message is not None:
                 print(message)
