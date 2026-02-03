@@ -11,7 +11,7 @@ from torch.utils.data import DataLoader
 
 from kito.callbacks.callback_base import Callback, CallbackList
 from kito.callbacks.ddp_aware_callback import DDPAwareCallback
-from kito.config.moduleconfig import CallbacksConfig
+from kito.config.moduleconfig import CallbacksConfig, KitoModuleConfig
 from kito.data.datapipeline import GenericDataPipeline
 from kito.module import KitoModule
 from kito.strategies.logger_strategy import DDPLogger, DefaultLogger
@@ -63,7 +63,7 @@ class Engine:
         engine.fit(train_loader, val_loader, max_epochs=100)  # Uses pre-built model
     """
 
-    def __init__(self, module: KitoModule, config):
+    def __init__(self, module: KitoModule, config: KitoModuleConfig):
         """
         Initialize Engine.
 
@@ -82,28 +82,7 @@ class Engine:
         # Logger
         self.logger = DDPLogger() if self.distributed_training else DefaultLogger()
 
-        # Device and DDP setup
-        self.gpu_id = (
-            dist.get_rank()
-            if self.distributed_training
-            else config.training.master_gpu_id
-        )
-        self.driver_device = (
-            self.gpu_id == config.training.master_gpu_id
-            if self.distributed_training
-            else True
-        )
-        device_type = config.training.device_type
-        self.device = assign_device(device_type, self.gpu_id)
-
-        # Log device info
-        available = get_available_devices()
-        self.logger.log_info(
-            f"Device configuration:\n"
-            f"  Requested: {device_type}\n"
-            f"  Assigned: {self.device}\n"
-            f"  Available: {available}"
-        )
+        self._setup_devices(config)
 
         # Assign to module
         self.module._move_to_device(self.device)
@@ -153,18 +132,7 @@ class Engine:
 
         # load pretrained weights if specified (for transfer learning / fine-tuning)
         if self.config.training.initialize_model_with_saved_weights:
-            weight_path = self.config.model.weight_load_path
-            ReadinessValidator.check_pretrained_weights_config(weight_path)
-            try:
-                self.load_weights(self.config.model.weight_load_path)
-                self.logger.log_info(
-                    f"Successfully loaded pretrained weights from: {weight_path}"
-                )
-            except Exception as e:
-                raise RuntimeError(
-                    f"Failed to load pretrained weights from '{weight_path}'\n"
-                    f"Error: {e}"
-                ) from e
+            self.load_weights()
 
         # Auto-setup optimizer if needed
         if not self.module.is_optimizer_set:
@@ -176,12 +144,12 @@ class Engine:
                 f"Optimizer configured: {self.module.optimizer.__class__.__name__}"
             )
 
-    def _ensure_model_ready_for_inference(self, weight_path: Optional[str] = None):
+    def _ensure_model_ready_for_inference(self):
         """
         Ensure model is ready for inference.
 
         Auto-builds if needed.
-        Does NOT auto-load weights (user must do this explicitly).
+        Auto-loads weights (user can also do this explicitly).
         """
         # Auto-build if needed
         if not self.module.is_built:
@@ -191,12 +159,69 @@ class Engine:
             self.module.build()
             self.logger.log_info("Model built successfully.")
 
-        # Check weights are loaded (don't auto-load, user must be explicit)
+        #  Auto-load weights if not already loaded and config specifies a path
         if not self.module.is_weights_loaded:
-            self.logger.log_warning(
-                f"Weights not loaded for '{self.module.model_name}'. "
-                "Call module.load_weights() or engine.load_weights() before inference."
-            )
+            if self.config.model.weight_load_path is not None:
+                self.logger.log_info("Loading weights automatically...")
+                self.load_weights()
+            else:
+                self.logger.log_warning(
+                    f"Weights not loaded for '{self.module.model_name}'. "
+                    "Set config.model.weight_load_path or call module.load_weights() before inference."
+                )
+
+    # ========================================================================
+    # Device handling
+    # ========================================================================
+    def _setup_devices(self, config):
+        """
+        Setups devices and DistributedDataParallel configuration.
+
+        """
+        if self.distributed_training:
+            # Global rank (0 to world_size-1)
+            self.rank = dist.get_rank()
+
+            # Local rank (0 to num_gpus_per_node-1)
+            # This is the actual GPU index on THIS machine
+            local_rank_str = os.environ.get('LOCAL_RANK', None)
+            if local_rank_str is None:
+                raise RuntimeError(
+                    "LOCAL_RANK environment variable not found. "
+                    "When using distributed training, launch with torchrun or set LOCAL_RANK manually."
+                )
+            self.local_rank = int(local_rank_str)
+
+            # Use local_rank for GPU assignment
+            self.gpu_id = self.local_rank
+
+            # Only global rank 0 is the master/driver
+            self.is_master = (self.rank == 0)
+            self.driver_device = self.is_master  # Alias for compatibility
+
+            # World size (total number of processes)
+            self.world_size = dist.get_world_size()
+
+        else:
+            # Single GPU mode
+            self.rank = 0
+            self.local_rank = config.training.device_id
+            self.gpu_id = config.training.device_id
+            self.is_master = True
+            self.driver_device = True
+            self.world_size = 1
+
+        device_type = config.training.device_type
+        self.device = assign_device(device_type, self.gpu_id)
+
+        # Log device info
+        available = get_available_devices()
+        self.logger.log_info(
+            f"Device configuration:\n"
+            f"  Requested: {device_type}\n"
+            f"  Assigned: {self.device}\n"
+            f"  Available: {available}"
+        )
 
     # ========================================================================
     # FIT - Training + Validation
@@ -244,7 +269,7 @@ class Engine:
 
         # Validate readiness (should always pass after auto-setup)
         ReadinessValidator.check_for_training(self.module)
-        ReadinessValidator.check_data_loaders(train_loader, val_loader)
+        ReadinessValidator.check_data_loaders(train_loader=train_loader, val_loader=val_loader)
 
         # Get max_epochs
         if max_epochs is None:
@@ -271,7 +296,7 @@ class Engine:
 
         # Wrap callbacks for DDP
         if self.distributed_training:
-            callbacks = [DDPAwareCallback(cb, default_rank=self.gpu_id) for cb in callbacks]
+            callbacks = [DDPAwareCallback(cb, master_rank=0) for cb in callbacks]
 
         callbacks = CallbackList(callbacks)
 
@@ -350,8 +375,15 @@ class Engine:
         self.module.model.train()
 
         # Set epoch for DDP sampler
+
         if self.distributed_training:
-            train_loader.sampler.set_epoch(self.current_epoch)
+            if hasattr(train_loader.sampler, 'set_epoch'):
+                train_loader.sampler.set_epoch(self.current_epoch)
+            else:
+                self.logger.log_warning(
+                    "DataLoader sampler does not have set_epoch method. "
+                    "For DDP, use DistributedSampler to ensure proper shuffling."
+                )
 
         # Init progress bar
         self.train_pbar.init(
@@ -395,7 +427,7 @@ class Engine:
 
         # Init progress bar
         self.val_pbar.init(
-            len(val_loader) + 1,
+            len(val_loader),
             verbosity_level
         )
 
@@ -445,8 +477,9 @@ class Engine:
         """
         Run inference on test data.
 
-        HYBRID: Auto-builds model if not already built.
-        Does NOT auto-load weights (user must load explicitly).
+        This method auto-loads weights (or user must load explicitly).
+
+        IMPORTANT: prediction_step is called once on a sample batch to infer output shape.
 
         Args:
             test_loader: Test DataLoader
@@ -463,7 +496,6 @@ class Engine:
             # Predict (auto-builds if needed)
             predictions = engine.predict(test_loader)
         """
-        # ===== HYBRID: Auto-setup if needed =====
         self._ensure_model_ready_for_inference()
 
         if data_pipeline is not None:
@@ -533,8 +565,14 @@ class Engine:
         with torch.no_grad():
             sample_output = self.module.prediction_step(sample_batch, None)
 
+        # Validate prediction_step returns a tensor
+        if not isinstance(sample_output, torch.Tensor):
+            raise TypeError(
+                f"prediction_step must return a torch.Tensor, got {type(sample_output)}. "
+                "If returning multiple outputs, return only the main prediction tensor."
+            )
+
         # Determine shapes
-        batch_size = sample_output.shape[0]
         output_shape = sample_output.shape[1:]
         total_samples = len(test_loader.dataset)
         full_shape = (total_samples,) + output_shape
@@ -543,6 +581,9 @@ class Engine:
         if self.module.standard_data_shape is not None:
             output_shape = self.module.standard_data_shape
             full_shape = (total_samples,) + output_shape
+
+        # Use a reasonable chunk size (not tied to actual batch size)
+        chunk_size = min(test_loader.batch_size, 32)  # Cap at 32 for HDF5 efficiency
 
         if save_to_disk:
             # Validate output path
@@ -554,7 +595,7 @@ class Engine:
                 'predictions',
                 shape=full_shape,
                 dtype='float32',
-                chunks=(batch_size,) + output_shape
+                chunks=(chunk_size,) + output_shape
             )
 
             self.logger.log_info(f"Created HDF5 dataset '{output_path}' to store predictions.")
@@ -566,12 +607,15 @@ class Engine:
             self.logger.log_info(f"Created tensor in memory to store predictions.")
             return {'type': 'memory', 'data': predictions}
 
-    def _store_predictions(self, storage, batch_idx, outputs, batch_size, dataset_len):
+    def _store_predictions(self, storage, batch_idx, outputs, nominal_batch_size, dataset_len):
         """Store predictions for a batch."""
         batch_data = outputs.cpu().detach().numpy()
 
-        start_idx = batch_idx * batch_size
-        end_idx = min((batch_idx + 1) * batch_size, dataset_len)
+        # Use actual batch size from output, not nominal batch size
+        actual_batch_size = batch_data.shape[0]
+
+        start_idx = batch_idx * nominal_batch_size
+        end_idx = min(start_idx + actual_batch_size, dataset_len)
 
         if storage['type'] == 'disk':
             storage['dataset'][start_idx:end_idx] = batch_data
@@ -615,13 +659,17 @@ class Engine:
         from torch.nn.parallel import DistributedDataParallel
 
         if not isinstance(self.module.model, DistributedDataParallel):
+            # Model should already be on correct device before wrapping
+            # DDP will handle device placement internally
             self.module.model = DistributedDataParallel(
                 self.module.model,
                 device_ids=[self.gpu_id]
             )
-            # self.module.model.to(self.device)
-            self.module._move_to_device(self.device)
+            # self.module._move_to_device(self.device)
             self.logger.log_info("Model wrapped in DistributedDataParallel.")
+
+            # Note: Do NOT call _move_to_device after DDP wrapping
+            # DDP already manages device placement via device_ids
 
     # ========================================================================
     # DEFAULT CALLBACKS
@@ -672,7 +720,6 @@ class Engine:
         cb_config = getattr(self.config, 'callbacks', CallbacksConfig())
 
         # Setup paths
-        timestamp = datetime.datetime.now().strftime("%d%b%Y-%H%M%S")
         work_dir = Path(os.path.expandvars(self.work_directory))
         model_name = self.module.model_name
         train_codename = self.config.model.train_codename
@@ -681,21 +728,21 @@ class Engine:
         if cb_config.enable_csv_logger:
             csv_dir = work_dir / "logs" / "csv"
             csv_dir.mkdir(parents=True, exist_ok=True)
-            csv_path = csv_dir / f"{model_name}_{timestamp}_{train_codename}.csv"
+            csv_path = csv_dir / f"{model_name}_{self.timestamp}_{train_codename}.csv"
             callbacks.append(CSVLogger(str(csv_path)))
 
         # === Text Logger ===
         if cb_config.enable_text_logger:
             log_dir = work_dir / "logs" / "text"
             log_dir.mkdir(parents=True, exist_ok=True)
-            log_path = log_dir / f"{model_name}_{timestamp}_{train_codename}.log"
+            log_path = log_dir / f"{model_name}_{self.timestamp}_{train_codename}.log"
             callbacks.append(TextLogger(str(log_path)))
 
         # === Model Checkpoint ===
         if cb_config.enable_model_checkpoint:
             weight_dir = work_dir / "weights" / model_name
             weight_dir.mkdir(parents=True, exist_ok=True)
-            weight_path = weight_dir / f"best_{model_name}_{timestamp}_{train_codename}.pt"
+            weight_path = weight_dir / f"best_{model_name}_{self.timestamp}_{train_codename}.pt"
 
             callbacks.append(
                 ModelCheckpoint(
@@ -709,7 +756,7 @@ class Engine:
 
         # === TensorBoard ===
         if cb_config.enable_tensorboard:
-            tb_dir = work_dir / "logs" / "tensorboard" / model_name / timestamp / train_codename
+            tb_dir = work_dir / "logs" / "tensorboard" / model_name / self.timestamp / train_codename
             tb_dir.mkdir(parents=True, exist_ok=True)
 
             # Scalars
@@ -808,7 +855,7 @@ class Engine:
     # WEIGHT LOADING (Convenience method)
     # ========================================================================
 
-    def load_weights(self, weight_path: str, strict: bool = True):
+    def load_weights(self, weight_path: str = None, strict: bool = True):
         """
         Load weights into module.
 
@@ -818,9 +865,20 @@ class Engine:
             weight_path: Path to weight file
             strict: Strict loading
         """
+        if weight_path is None:
+            weight_path = self.config.model.weight_load_path
         ReadinessValidator.check_model_built(self.module)
-        self.module.load_weights(weight_path, strict)
-        self.logger.log_info(f"Loaded weights from '{weight_path}' successfully.")
+        ReadinessValidator.check_weights_config(weight_path)
+        try:
+            self.module.load_weights(weight_path, strict)
+            self.logger.log_info(
+                f"Successfully loaded weights from: {weight_path}"
+            )
+        except Exception as e:
+            raise RuntimeError(
+                f"Failed to load pretrained weights from '{weight_path}'\n"
+                f"Error: {e}"
+            ) from e
 
     # ========================================================================
     # LOGGING
