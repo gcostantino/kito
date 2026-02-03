@@ -24,6 +24,58 @@ from kito.utils.decorators import require_mode
 from kito.utils.gpu_utils import assign_device, get_available_devices
 
 
+def _ddp_worker_fn(rank, worker_args, world_size):
+    """
+    Worker function that runs in each spawned process.
+
+    This recreates the Engine and runs training.
+    """
+    try:
+        # Set environment variables
+        os.environ['KITO_WORKER_RANK'] = str(rank)
+        os.environ['KITO_WORLD_SIZE'] = str(world_size)
+        os.environ['RANK'] = str(rank)
+        os.environ['LOCAL_RANK'] = str(rank)
+        os.environ['WORLD_SIZE'] = str(world_size)
+
+        # Recreate module and engine in this process
+        config = worker_args['config']
+        module_class = worker_args['module_class']
+
+        # Instantiate module (user's class)
+        module = module_class(
+            worker_args['module_name'],
+            config
+        )
+
+        # Create engine
+        engine = Engine(module, config)
+
+        # Get data loaders
+        data_pipeline = worker_args['data_pipeline']
+        if data_pipeline is not None:
+            # Recreate data pipeline in this process
+            data_pipeline.setup()
+            train_loader = data_pipeline.train_dataloader()
+            val_loader = data_pipeline.val_dataloader()
+        else:
+            raise ValueError("DataPipeline required for auto-spawned DDP")
+
+        # Run training (will skip spawning since _is_spawned_worker=True)
+        engine.fit(
+            train_loader=train_loader,
+            val_loader=val_loader,
+            max_epochs=worker_args['max_epochs'],
+            callbacks=worker_args['callbacks']
+        )
+
+    except KeyboardInterrupt:
+        print(f"Worker {rank}: Interrupted")
+    finally:
+        if dist.is_initialized():
+            dist.destroy_process_group()
+
+
 class Engine:
     """
     Engine for training, validation, and inference.
@@ -79,6 +131,18 @@ class Engine:
         self.distributed_training = config.training.distributed_training
         self.work_directory = config.workdir.work_directory
 
+        # ===== AUTO-INITIALIZE DDP =====
+        # Track if we're in a spawned worker process OR launched with torchrun
+        self._is_spawned_worker = os.environ.get('KITO_WORKER_RANK') is not None
+        self._is_torchrun = (
+                os.environ.get('RANK') is not None and
+                os.environ.get('LOCAL_RANK') is not None and
+                os.environ.get('WORLD_SIZE') is not None
+        )
+
+        # Initialize DDP if we're in a worker process (spawn OR torchrun)
+        if self.distributed_training and (self._is_spawned_worker or self._is_torchrun):
+            self._auto_init_ddp()
         # Logger
         self.logger = DDPLogger() if self.distributed_training else DefaultLogger()
 
@@ -238,7 +302,7 @@ class Engine:
         """
         Train the module.
 
-        HYBRID: Auto-builds model and sets optimizer if not already done.
+        Auto-builds model and sets optimizer if not already done.
 
         Args:
             train_loader: Training DataLoader
@@ -256,8 +320,20 @@ class Engine:
             module.associate_optimizer()
             engine.fit(train_loader, val_loader, max_epochs=100)
             # Uses pre-built model
+        Example (DDP, Advanced)
+        Strategy #1 (recommended) - use torchrun:
+            torchrun --nproc_per_node=4 train.py
+        Strategy #2: transparent (handled by Engine), less control
+            python train.py
         """
-        # ===== HYBRID: Auto-setup if needed =====
+        # ===== AUTO-SPAWN FOR DDP =====
+        # Only spawn if DDP enabled AND not already in a worker (spawn or torchrun)
+        if self.distributed_training and not self._is_spawned_worker and not self._is_torchrun:
+            # We're in main process - spawn workers
+            return self._spawn_and_train(
+                train_loader, val_loader, data_pipeline, max_epochs, callbacks
+            )
+
         self._ensure_model_ready_for_training()
 
         if data_pipeline is not None:
@@ -654,6 +730,138 @@ class Engine:
     # DDP
     # ========================================================================
 
+    def _spawn_and_train(self, train_loader, val_loader, data_pipeline, max_epochs, callbacks):
+        """
+        Spawn worker processes for DDP training.
+
+        This is called only once from the main process.
+        """
+        if data_pipeline is None and (train_loader is not None or val_loader is not None):
+            raise ValueError(
+                "When using automatic DDP spawning, you must provide a data_pipeline "
+                "(not pre-created dataloaders). Example:\n"
+                "  engine.fit(data_pipeline=pipeline, max_epochs=100)\n"
+                "Alternatively, launch with torchrun and pass dataloaders directly."
+            )
+
+        import torch.multiprocessing as mp
+
+        nprocs = self.config.training.num_gpus or torch.cuda.device_count()  # only works with cuda. To be extended...
+
+        if nprocs < 2:
+            raise ValueError(
+                f"Distributed training enabled but only {nprocs} GPU(s) available. "
+                "Need at least 2 GPUs or disable distributed training."
+            )
+
+        self.logger.log_info(f"Spawning {nprocs} processes for DDP training...")
+
+        # Set master address
+        os.environ['MASTER_ADDR'] = os.environ.get('MASTER_ADDR', 'localhost')
+        os.environ['MASTER_PORT'] = os.environ.get('MASTER_PORT', '12355')
+
+        # Prepare args to pass to workers
+        worker_args = {
+            'module_class': type(self.module),
+            'module_name': self.module.model_name,
+            'config': self.config,
+            'data_pipeline': data_pipeline,
+            'max_epochs': max_epochs,
+            'callbacks': callbacks,
+        }
+
+        # Spawn workers
+        try:
+            mp.spawn(
+                _ddp_worker_fn,
+                args=(worker_args, nprocs),
+                nprocs=nprocs,
+                join=True
+            )
+        except KeyboardInterrupt:
+            self.logger.log_info("Training interrupted by user.")
+
+        self.logger.log_info("DDP training completed.")
+
+    def _auto_init_ddp(self):
+        """
+        Automatically initialize DDP if not already initialized.
+
+        Supports three launch modes:
+        1. torchrun (recommended): User runs `torchrun --nproc_per_node=N script.py
+        2. Transparent spawn: Engine.fit() spawns workers automatically
+        3. Already initialized: Skip initialization
+        """
+        # Check if already initialized
+        if dist.is_available() and dist.is_initialized():
+            self.logger.log_info("DDP already initialized, skipping setup.")
+            return
+
+        # Mode 1: Check for Kito spawn (KITO_WORKER_RANK set by _ddp_worker_fn)
+        kito_rank = os.environ.get('KITO_WORKER_RANK')
+        kito_world_size = os.environ.get('KITO_WORLD_SIZE')
+
+        if kito_rank is not None and kito_world_size is not None:
+            # Spawned by Engine._spawn_and_train()
+            rank = int(kito_rank)
+            world_size = int(kito_world_size)
+
+            self.logger.log_info(
+                f"Detected Kito spawn launch (rank={rank}, world_size={world_size})"
+            )
+
+            # Set defaults for master address if not set
+            if 'MASTER_ADDR' not in os.environ:
+                os.environ['MASTER_ADDR'] = 'localhost'
+            if 'MASTER_PORT' not in os.environ:
+                os.environ['MASTER_PORT'] = '12355'
+
+            # Initialize process group
+            backend = 'nccl' if torch.cuda.is_available() else 'gloo'
+            dist.init_process_group(backend=backend, rank=rank, world_size=world_size)
+            torch.cuda.set_device(rank)
+
+            self.logger.log_info(
+                f"DDP initialized via spawn: backend={backend}, "
+                f"rank={dist.get_rank()}, world_size={dist.get_world_size()}"
+            )
+            return
+
+        # Mode 2: Check for torchrun (RANK/LOCAL_RANK/WORLD_SIZE set by torchrun)
+        rank = os.environ.get('RANK')
+        local_rank = os.environ.get('LOCAL_RANK')
+        world_size = os.environ.get('WORLD_SIZE')
+
+        if rank is not None and local_rank is not None and world_size is not None:
+            # Launched with torchrun
+            self.logger.log_info(
+                f"Detected torchrun launch (rank={rank}, local_rank={local_rank}, "
+                f"world_size={world_size})"
+            )
+
+            # Set defaults for master address if not set
+            if 'MASTER_ADDR' not in os.environ:
+                os.environ['MASTER_ADDR'] = 'localhost'
+            if 'MASTER_PORT' not in os.environ:
+                os.environ['MASTER_PORT'] = '12355'
+
+            # Initialize process group (torchrun already set rank/world_size)
+            backend = 'nccl' if torch.cuda.is_available() else 'gloo'
+            dist.init_process_group(backend=backend)
+
+            self.logger.log_info(
+                f"DDP initialized via torchrun: backend={backend}, "
+                f"rank={dist.get_rank()}, world_size={dist.get_world_size()}"
+            )
+            return
+
+        # Mode 3: No DDP environment detected - should not happen if spawn is working
+        # This case is handled by fit() which spawns if needed
+        self.logger.log_warning(
+            "DDP initialization called but no distributed environment detected. "
+            "This should not happen - check your launch configuration."
+        )
+
     def _wrap_model_ddp(self):
         """Wrap model with DistributedDataParallel."""
         from torch.nn.parallel import DistributedDataParallel
@@ -712,7 +920,6 @@ class Engine:
             TensorBoardHistograms,
             TensorBoardGraph
         )
-        from kito.callbacks.tensorboard_callback_images import SimpleImagePlotter
 
         callbacks = []
 
