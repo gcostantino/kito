@@ -38,24 +38,25 @@ class KitoModule(ABC):
         engine.fit(train_loader, val_loader, max_epochs=100)
     """
 
-    def __init__(self, model_name: str, config: KitoModuleConfig = None):
+    def __init__(self, config: KitoModuleConfig = None):
         """
         Initialize BaseModule.
 
         Args:
-            model_name: Name of the model
-            config: Optional config object for future extensibility
+            config: KitoModuleConfig object
         """
-        self.model_name = model_name
+
         self.config = config
 
         # Extract useful config values if provided
         if config is not None:
             self.learning_rate = config.training.learning_rate
             self.batch_size = config.training.batch_size
+            self.module_name = config.model.module_name
         else:
             self.learning_rate = None
             self.batch_size = None
+            self.module_name = None
 
         # Model components
         self.model = None

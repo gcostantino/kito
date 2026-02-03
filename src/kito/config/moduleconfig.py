@@ -126,6 +126,9 @@ class ModelConfig:
     3. Dict with params: {'name': 'weighted_mse', 'params': {'weight': 2.0}}
     4. Dict with inline params: {'name': 'weighted_mse', 'weight': 2.0}"""
 
+    # module name
+    module_name: str
+
     # Data dimensions
     input_data_size: Tuple[int, ...]  # Flexible shape
 
@@ -133,10 +136,11 @@ class ModelConfig:
     loss: Union[str, dict] = field(default_factory=dict)
 
     # Callbacks and logging
-    #log_to_tensorboard: bool = False
-    #save_model_weights: bool = False
-    #text_logging: bool = False
-    #csv_logging: bool = False
+    # log_to_tensorboard: bool = False
+    # save_model_weights: bool = False
+    # text_logging: bool = False
+    # csv_logging: bool = False
+
     train_codename: str = "experiment"
 
     # Weights
@@ -193,6 +197,7 @@ class CallbacksConfig:
 
     # specify which plotter class to use
     image_plotter_class: Optional[Type['BaseImagePlotter']] = None  # None = auto-detect
+
 
 @dataclass
 class KitoModuleConfig:

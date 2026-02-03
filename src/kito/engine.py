@@ -195,7 +195,7 @@ class Engine:
         # Auto-build if needed
         if not self.module.is_built:
             self.logger.log_info(
-                f"Model '{self.module.model_name}' not built. Building automatically..."
+                f"Model '{self.module.module_name}' not built. Building automatically..."
             )
             self.module.build()
             self.module._move_to_device(self.device)  # Then move to device
@@ -208,7 +208,7 @@ class Engine:
         # Auto-setup optimizer if needed
         if not self.module.is_optimizer_set:
             self.logger.log_info(
-                f"Optimizer not set for '{self.module.model_name}'. Setting up automatically..."
+                f"Optimizer not set for '{self.module.module_name}'. Setting up automatically..."
             )
             self.module.associate_optimizer()
             self.logger.log_info(
@@ -225,7 +225,7 @@ class Engine:
         # Auto-build if needed
         if not self.module.is_built:
             self.logger.log_info(
-                f"Model '{self.module.model_name}' not built. Building automatically..."
+                f"Model '{self.module.module_name}' not built. Building automatically..."
             )
             self.module.build()
             self.logger.log_info("Model built successfully.")
@@ -237,7 +237,7 @@ class Engine:
                 self.load_weights()
             else:
                 self.logger.log_warning(
-                    f"Weights not loaded for '{self.module.model_name}'. "
+                    f"Weights not loaded for '{self.module.module_name}'. "
                     "Set config.model.weight_load_path or call module.load_weights() before inference."
                 )
 
@@ -465,7 +465,7 @@ class Engine:
             if self.distributed_training:
                 dist.destroy_process_group()
 
-        self.logger.log_info(f"\nTraining of {self.module.model_name} completed.")
+        self.logger.log_info(f"\nTraining of {self.module.module_name} completed.")
 
     def _train_epoch(self, train_loader, verbosity_level):
         """
@@ -654,7 +654,7 @@ class Engine:
         # Finalize storage
         result = self._finalize_prediction_storage(storage, save_to_disk, output_path)
 
-        self.logger.log_info(f"\nInference of {self.module.model_name} completed.")
+        self.logger.log_info(f"\nInference of {self.module.module_name} completed.")
 
         return result
 
@@ -788,7 +788,7 @@ class Engine:
         # Prepare args to pass to workers
         worker_args = {
             'module_class': type(self.module),
-            'module_name': self.module.model_name,
+            'module_name': self.module.module_name,
             'config': self.config,
             'data_pipeline': data_pipeline,
             'max_epochs': max_epochs,
@@ -925,7 +925,7 @@ class Engine:
         context = {
             'timestamp': self.timestamp,
             'work_directory': self.work_directory,
-            'model_name': self.module.model_name,
+            'module_name': self.module.module_name,
             'train_codename': self.config.model.train_codename,
         }
 
@@ -953,28 +953,28 @@ class Engine:
 
         # Setup paths
         work_dir = Path(os.path.expandvars(self.work_directory))
-        model_name = self.module.model_name
+        module_name = self.module.module_name
         train_codename = self.config.model.train_codename
 
         # === CSV Logger ===
         if cb_config.enable_csv_logger:
             csv_dir = work_dir / "logs" / "csv"
             csv_dir.mkdir(parents=True, exist_ok=True)
-            csv_path = csv_dir / f"{model_name}_{self.timestamp}_{train_codename}.csv"
+            csv_path = csv_dir / f"{module_name}_{self.timestamp}_{train_codename}.csv"
             callbacks.append(CSVLogger(str(csv_path)))
 
         # === Text Logger ===
         if cb_config.enable_text_logger:
             log_dir = work_dir / "logs" / "text"
             log_dir.mkdir(parents=True, exist_ok=True)
-            log_path = log_dir / f"{model_name}_{self.timestamp}_{train_codename}.log"
+            log_path = log_dir / f"{module_name}_{self.timestamp}_{train_codename}.log"
             callbacks.append(TextLogger(str(log_path)))
 
         # === Model Checkpoint ===
         if cb_config.enable_model_checkpoint:
-            weight_dir = work_dir / "weights" / model_name
+            weight_dir = work_dir / "weights" / module_name
             weight_dir.mkdir(parents=True, exist_ok=True)
-            weight_path = weight_dir / f"best_{model_name}_{self.timestamp}_{train_codename}.pt"
+            weight_path = weight_dir / f"best_{module_name}_{self.timestamp}_{train_codename}.pt"
 
             callbacks.append(
                 ModelCheckpoint(
@@ -988,7 +988,7 @@ class Engine:
 
         # === TensorBoard ===
         if cb_config.enable_tensorboard:
-            tb_dir = work_dir / "logs" / "tensorboard" / model_name / self.timestamp / train_codename
+            tb_dir = work_dir / "logs" / "tensorboard" / module_name / self.timestamp / train_codename
             tb_dir.mkdir(parents=True, exist_ok=True)
 
             # Scalars
@@ -1119,7 +1119,7 @@ class Engine:
     def _log_training_info(self, max_epochs, num_callbacks):
         """Log training configuration."""
         attrib_to_log = {
-            'model_name': self.module.model_name,
+            'module_name': self.module.module_name,
             'optimizer': self.module.optimizer.__class__.__name__,
             'batch_size': self.module.batch_size,
             'n_train_epochs': max_epochs,
@@ -1138,7 +1138,7 @@ class Engine:
     def _log_inference_info(self, num_batches, save_to_disk, output_path):
         """Log inference configuration."""
         self.logger.log_info(
-            f"\nRunning inference for {self.module.model_name}\n"
+            f"\nRunning inference for {self.module.module_name}\n"
             f"Batches: {num_batches}\n"
             f"Device: {self.device}\n"
             f"Save to disk: {save_to_disk}\n"
