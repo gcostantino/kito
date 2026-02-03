@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/kito_simplelogo.png" alt="Kito Logo" width="200"/>
+  <img src="https://raw.githubusercontent.com/gcostantino/kito/assets/kito_simplelogo.png" alt="Kito Logo" width="200"/>
 </p>
 
 ---
