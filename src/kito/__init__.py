@@ -4,7 +4,7 @@ Kito: Effortless PyTorch Training
 Define your model, Kito handles the rest.
 """
 
-__version__ = "0.2.4"
+__version__ = "0.2.5"
 
 # Import main classes for top-level access
 from kito.engine import Engine
