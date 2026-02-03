@@ -282,7 +282,7 @@ class Engine:
             self.gpu_id = config.training.device_id
             self.is_master = True
             self.driver_device = True
-            self.world_size = config.training.num_gpus or torch.cuda.device_count()
+            self.world_size = torch.cuda.device_count()  # it only works with CUDA. To be extended...
 
             self.logger.log_info(
                 f"Main process: DDP will spawn {self.world_size} workers"
@@ -769,7 +769,7 @@ class Engine:
 
         import torch.multiprocessing as mp
 
-        nprocs = self.config.training.num_gpus or torch.cuda.device_count()  # only works with cuda. To be extended...
+        nprocs = self.world_size
 
         if nprocs < 2:
             raise ValueError(
