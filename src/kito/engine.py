@@ -137,14 +137,10 @@ class Engine:
                 os.environ.get('WORLD_SIZE') is not None
         )
 
-        # Use DefaultLogger initially, will be fine even if DDP initializes
-        # (we check dist.is_initialized() inside DDPLogger anyway)
-        in_worker = self._is_spawned_worker or self._is_torchrun
-        self.logger = DDPLogger() if (self.distributed_training and in_worker) else DefaultLogger()
+        self.logger = DDPLogger() if self.distributed_training else DefaultLogger()
 
         # Initialize DDP if we're in a worker process (spawn OR torchrun)
-        # (Now logger exists, so _auto_init_ddp can use it)
-        if self.distributed_training and in_worker:
+        if self.distributed_training and (self._is_spawned_worker or self._is_torchrun):
             self._auto_init_ddp()
 
         self._setup_devices(config)
