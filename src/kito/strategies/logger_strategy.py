@@ -1,6 +1,6 @@
 import logging
 
-import torch
+import torch.distributed as dist
 
 
 class BaseLogger:
@@ -35,8 +35,20 @@ class DefaultLogger(BaseLogger):
 class DDPLogger(DefaultLogger):
     def __init__(self, log_level=logging.INFO):
         super().__init__(log_level)
-        # Only log from rank 0
-        self.is_driver = torch.distributed.get_rank() == 0
+        # DON'T check rank here - do it lazily when first needed
+        self._is_driver = None
+
+    @property
+    def is_driver(self):
+        """Lazy evaluation of rank (only checked when first used)."""
+        if self._is_driver is None:
+            # Check if DDP is initialized
+            if dist.is_available() and dist.is_initialized():
+                self._is_driver = dist.get_rank() == 0
+            else:
+                # Fallback: assume driver if DDP not initialized
+                self._is_driver = True
+        return self._is_driver
 
     def log_info(self, msg):
         if self.is_driver:
