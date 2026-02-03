@@ -12,6 +12,7 @@ This separates data concerns from model training logic.
 from abc import ABC, abstractmethod
 from typing import Optional
 
+import torch.distributed as dist
 from torch.utils.data import DataLoader, Subset, DistributedSampler
 
 from kito.config.moduleconfig import KitoModuleConfig
@@ -199,6 +200,10 @@ class GenericDataPipeline(BaseDataPipeline):
         batch_size = self.config.training.batch_size
         distributed = self.config.training.distributed_training
 
+        # Check if DDP is ACTUALLY initialized (not just configured)
+        ddp_initialized = dist.is_available() and dist.is_initialized()
+        use_distributed_sampler = distributed and ddp_initialized
+
         # DataLoader kwargs
         loader_kwargs = {
             'batch_size': batch_size,
@@ -210,7 +215,7 @@ class GenericDataPipeline(BaseDataPipeline):
 
         # Train loader (with shuffling)
         if self.train_dataset is not None and len(self.train_dataset) > 0:
-            if distributed:
+            if use_distributed_sampler:
                 train_sampler = DistributedSampler(self.train_dataset, shuffle=True)
                 self.train_loader = DataLoader(
                     self.train_dataset,
@@ -225,13 +230,13 @@ class GenericDataPipeline(BaseDataPipeline):
                     **loader_kwargs
                 )
         else:
-            self.train_loader = None  # no loader if dataset is empty
+            self.train_loader = None
             if self.train_dataset is not None:
                 print("Warning: Training dataset is empty. Skipping train_loader creation.")
 
         # Val loader (no shuffling)
         if self.val_dataset is not None and len(self.val_dataset) > 0:
-            if distributed:
+            if use_distributed_sampler:
                 val_sampler = DistributedSampler(self.val_dataset, shuffle=False)
                 self.val_loader = DataLoader(
                     self.val_dataset,
@@ -252,7 +257,7 @@ class GenericDataPipeline(BaseDataPipeline):
 
         # Test loader (no shuffling)
         if self.test_dataset is not None and len(self.test_dataset) > 0:
-            if distributed:
+            if use_distributed_sampler:
                 test_sampler = DistributedSampler(self.test_dataset, shuffle=False)
                 self.test_loader = DataLoader(
                     self.test_dataset,
