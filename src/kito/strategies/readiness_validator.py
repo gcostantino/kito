@@ -1,3 +1,6 @@
+from torch.utils.data import DataLoader
+
+
 class ReadinessValidator:
     """
     Validates module readiness for different operations.
@@ -101,13 +104,23 @@ class ReadinessValidator:
         if train_loader is None and val_loader is None and test_loader is None:
             raise ValueError("At least one data loader must be provided")
 
+        # if at least one is not None, check it is a valid DataLoader
+        if train_loader is not None and not isinstance(train_loader, DataLoader):
+            raise TypeError(f"train_loader must be a DataLoader, got {type(train_loader)}")
+
+        if val_loader is not None and not isinstance(val_loader, DataLoader):
+            raise TypeError(f"val_loader must be a DataLoader, got {type(val_loader)}")
+
+        if test_loader is not None and not isinstance(test_loader, DataLoader):
+            raise TypeError(f"test_loader must be a DataLoader, got {type(test_loader)}")
+
     @staticmethod
-    def check_pretrained_weights_config(weight_path):
+    def check_weights_config(weight_path):
         """
-        Validate pretrained weights configuration.
+        Validate weights configuration.
 
         Args:
-            weight_path: path to pretrained weights
+            weight_path: path to weights
 
         Raises:
             ValueError: If weight_load_path not specified
@@ -119,7 +132,7 @@ class ReadinessValidator:
         # Check path specified
         if not weight_path or weight_path == '':
             raise ValueError(
-                "initialize_model_with_saved_weights=True but weight_load_path is not specified!\n"
+                "weight_load_path is not specified!\n"
                 "Please provide config.model.weight_load_path = '/path/to/weights.pt'"
             )
 
