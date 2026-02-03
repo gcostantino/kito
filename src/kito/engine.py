@@ -157,7 +157,7 @@ class Engine:
         self.module._move_to_device(self.device)
 
         # Progress bars - only use DDP handlers when DDP is actually running
-        ddp_initialized = dist.is_available() and dist.is_initialized()
+        ddp_initialized = dist.is_available() and dist.is_initialized()  # this could become a class attribute
 
         self.train_pbar = (
             DDPProgressBarHandler()
