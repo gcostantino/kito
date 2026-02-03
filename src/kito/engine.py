@@ -143,8 +143,13 @@ class Engine:
         # Initialize DDP if we're in a worker process (spawn OR torchrun)
         if self.distributed_training and (self._is_spawned_worker or self._is_torchrun):
             self._auto_init_ddp()
-        # Logger
-        self.logger = DDPLogger() if self.distributed_training else DefaultLogger()
+
+        # Use DDPLogger only in actual DDP workers (where dist is initialized)
+        self.logger = (
+            DDPLogger()
+            if (self.distributed_training and (self._is_spawned_worker or self._is_torchrun))
+            else DefaultLogger()
+        )
 
         self._setup_devices(config)
 
