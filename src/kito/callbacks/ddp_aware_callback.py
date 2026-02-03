@@ -7,7 +7,7 @@ class DDPAwareCallback(Callback):
     """
     Wrapper that makes any callback DDP-safe.
 
-    Only executes on rank 0 in distributed training.
+    Only executes on the given rank (default: 0) in distributed training.
 
     Args:
         callback: The callback to wrap
@@ -17,14 +17,15 @@ class DDPAwareCallback(Callback):
         ddp_checkpoint = DDPAwareCallback(checkpoint)
     """
 
-    def __init__(self, callback: Callback):
+    def __init__(self, callback: Callback, default_rank=0):
         self.callback = callback
+        self.rank = default_rank
         self.is_driver = self._check_if_driver()
 
     def _check_if_driver(self):
         """Check if this is the driver process (rank 0)."""
         if dist.is_available() and dist.is_initialized():
-            return dist.get_rank() == 0
+            return dist.get_rank() == self.rank
         return True  # Single GPU or CPU
 
     def on_train_begin(self, engine, model, **kwargs):
