@@ -43,10 +43,7 @@ def _ddp_worker_fn(rank, worker_args, world_size):
         module_class = worker_args['module_class']
 
         # Instantiate module (user's class)
-        module = module_class(
-            worker_args['module_name'],
-            config
-        )
+        module = module_class(config)
 
         # Create engine
         engine = Engine(module, config)
