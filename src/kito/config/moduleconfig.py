@@ -94,7 +94,7 @@ class TrainingConfig:
 
     # Distributed training
     distributed_training: bool = False
-    master_gpu_id: int = 0  # Only used if not distributed
+    master_gpu_id: int = 0  # Only used if distributed
 
     # Weight initialization
     initialize_model_with_saved_weights: bool = False
