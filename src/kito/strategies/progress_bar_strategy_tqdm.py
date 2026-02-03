@@ -1,3 +1,5 @@
+import os
+import sys
 import time
 from collections import deque
 
@@ -14,6 +16,7 @@ class TqdmProgressBarHandler(BaseProgressBarHandler):
     - Smoothed time per step (averaged over last 20 steps)
     - Clean bar format with elapsed/remaining time
     - Automatic metric display from training loop
+    - Adaptive width for SSH and local terminals
     """
     _header_printed = False
 
@@ -23,11 +26,6 @@ class TqdmProgressBarHandler(BaseProgressBarHandler):
         self.current = 0
         self.step_start_time = None
         self.step_times = deque(maxlen=20)  # Track last 20 steps for smooth average
-
-    @staticmethod
-    def _colored(text, color_code):
-        """Helper to colorize text."""
-        return f"\033[{color_code}m{text}\033[0m"
 
     def init(self, total, verbosity_level, message=''):
         """
@@ -46,9 +44,18 @@ class TqdmProgressBarHandler(BaseProgressBarHandler):
         if verbosity_level > 0:
             # Print header using tqdm's write with colors
             if not TqdmProgressBarHandler._header_printed:
+                # Get terminal width (with fallback)
+                try:
+                    term_width = os.get_terminal_size().columns
+                except (AttributeError, OSError):
+                    term_width = 100  # Fallback for SSH without proper terminal
+
+                # Use reasonable width (max 130, min 80)
+                header_width = min(max(term_width, 80), 130)
+
                 # Calculate spacing to match tqdm's layout
                 desc_width = len(message) + 10  # Description + percentage space
-                bar_width = 50  # Default bar width (can adjust)
+                bar_width = 20  # Default bar width (can adjust)
 
                 # Build aligned header
                 header = (
@@ -57,16 +64,19 @@ class TqdmProgressBarHandler(BaseProgressBarHandler):
                     f" # completed batches [time elapsed > remaining] Metrics"  # Right side info
                 )
 
-                tqdm.write("\n" + self._colored("=" * 130, "1;31"))
-                tqdm.write(self._colored(header, "31"))
-                tqdm.write(self._colored("=" * 130, "1;31") + "\n")
+                tqdm.write("\n" + "=" * header_width)
+                tqdm.write(header[:header_width])  # Truncate if needed
+                tqdm.write("=" * header_width + "\n")
                 TqdmProgressBarHandler._header_printed = True
 
             self.pbar = tqdm(
                 total=total,
                 desc=message,
-                ncols=130,
-                bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]{postfix}'
+                # Remove fixed ncols - let tqdm adapt to terminal
+                bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]{postfix}',
+                file=sys.stderr,  # Better for SSH and piping
+                mininterval=0.5,  # Update at most every 0.5s (reduces flicker)
+                dynamic_ncols=True  # Adapt to terminal size changes
             )
         else:
             self.pbar = None
@@ -102,7 +112,7 @@ class TqdmProgressBarHandler(BaseProgressBarHandler):
                 avg_step_time = sum(self.step_times) / len(self.step_times)
                 postfix['ms/step'] = f'{avg_step_time:.3f}'
 
-            self.pbar.set_postfix(postfix, refresh=True)
+            self.pbar.set_postfix(postfix, refresh=False)  # Let tqdm control refresh
             self.pbar.update(increment)
 
     def close(self):
