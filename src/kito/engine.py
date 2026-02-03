@@ -89,7 +89,7 @@ class Engine:
             else config.training.master_gpu_id
         )
         self.driver_device = (
-            self.gpu_id == 0
+            self.gpu_id == config.training.master_gpu_id
             if self.distributed_training
             else True
         )
@@ -271,7 +271,7 @@ class Engine:
 
         # Wrap callbacks for DDP
         if self.distributed_training:
-            callbacks = [DDPAwareCallback(cb) for cb in callbacks]
+            callbacks = [DDPAwareCallback(cb, default_rank=self.gpu_id) for cb in callbacks]
 
         callbacks = CallbackList(callbacks)
 
