@@ -15,9 +15,9 @@ from kito.config.moduleconfig import CallbacksConfig, KitoModuleConfig
 from kito.data.datapipeline import GenericDataPipeline
 from kito.module import KitoModule
 from kito.strategies.logger_strategy import DDPLogger, DefaultLogger
-from kito.strategies.progress_bar_strategy import (
-    StandardProgressBarHandler,
-    DDPProgressBarHandler
+from kito.strategies.progress_bar_strategy_tqdm import (
+    TqdmProgressBarHandler,
+    DDPTqdmProgressBarHandler
 )
 from kito.strategies.readiness_validator import ReadinessValidator
 from kito.utils.decorators import require_mode
@@ -148,20 +148,20 @@ class Engine:
         # Assign to module
         self.module._move_to_device(self.device)
 
-        # Progress bars - only use DDP handlers when DDP is actually running
-        ddp_initialized = dist.is_available() and dist.is_initialized()  # this could become a class attribute
+        # Progress bars
+        ddp_initialized = dist.is_available() and dist.is_initialized()
 
         self.train_pbar = (
-            DDPProgressBarHandler()
+            DDPTqdmProgressBarHandler()
             if (self.distributed_training and ddp_initialized)
-            else StandardProgressBarHandler()
+            else TqdmProgressBarHandler()
         )
         self.val_pbar = (
-            DDPProgressBarHandler()
+            DDPTqdmProgressBarHandler()
             if (self.distributed_training and ddp_initialized)
-            else StandardProgressBarHandler()
+            else TqdmProgressBarHandler()
         )
-        self.inference_pbar = StandardProgressBarHandler()
+        self.inference_pbar = TqdmProgressBarHandler()  # Changed
 
         self.timestamp = datetime.datetime.now().strftime("%d%b%Y-%H%M%S")
         self.train_run_id = self.timestamp  # Alias for clarity
@@ -487,25 +487,27 @@ class Engine:
 
         # Accumulate loss
         running_loss = 0.0
+        try:
+            for batch_idx, batch in enumerate(train_loader):
+                # Check data shape on first batch
+                if self._first_train_batch:
+                    self.module._check_data_shape(batch)
+                    self._first_train_batch = False
 
-        for batch_idx, batch in enumerate(train_loader):
-            # Check data shape on first batch
-            if self._first_train_batch:
-                self.module._check_data_shape(batch)
-                self._first_train_batch = False
+                # ===== Call module's training_step =====
+                step_output = self.module.training_step(batch, self.train_pbar)
 
-            # ===== Call module's training_step =====
-            step_output = self.module.training_step(batch, self.train_pbar)
+                # Extract loss
+                loss = step_output['loss']
+                running_loss += loss.item()
 
-            # Extract loss
-            loss = step_output['loss']
-            running_loss += loss.item()
-
-            # Update progress bar
-            self.train_pbar.step(
-                batch_idx + 1,
-                [("train_loss: ", float(f'{loss.item():.4f}'))]
-            )
+                # Update progress bar
+                self.train_pbar.step(
+                    batch_idx + 1,
+                    [("train_loss: ", float(f'{loss.item():.4f}'))]
+                )
+        finally:
+            self.train_pbar.close()
 
         # Return average loss
         return running_loss / len(train_loader)
@@ -531,25 +533,27 @@ class Engine:
         last_outputs = None
 
         with torch.no_grad():
-            for batch_idx, batch in enumerate(val_loader):
-                # ===== Call module's validation_step =====
-                step_output = self.module.validation_step(batch, self.val_pbar)
+            try:
+                for batch_idx, batch in enumerate(val_loader):
+                    # ===== Call module's validation_step =====
+                    step_output = self.module.validation_step(batch, self.val_pbar)
 
-                # Extract metrics
-                loss = step_output['loss']
-                running_loss += loss.item()
+                    # Extract metrics
+                    loss = step_output['loss']
+                    running_loss += loss.item()
 
-                # Store last batch for callbacks
-                last_outputs = step_output.get('outputs')
-                last_targets = step_output.get('targets')
-                last_inputs = step_output.get('inputs')
+                    # Store last batch for callbacks
+                    last_outputs = step_output.get('outputs')
+                    last_targets = step_output.get('targets')
+                    last_inputs = step_output.get('inputs')
 
-                # Update progress bar
-                self.val_pbar.step(
-                    batch_idx + 1,
-                    [("val_loss: ", float(f'{loss.item():.4f}'))]
-                )
-
+                    # Update progress bar
+                    self.val_pbar.step(
+                        batch_idx + 1,
+                        [("val_loss: ", float(f'{loss.item():.4f}'))]
+                    )
+            finally:
+                self.val_pbar.close()
         # Average loss
         avg_loss = running_loss / len(val_loader)
 

@@ -39,7 +39,8 @@ dependencies = [
     "torchsummary>=1.5.1",
     "packaging>=20.0",
     "tensorboard>=2.10.0",
-    "pkbar>=0.5",
+    #"pkbar>=0.5",
+    "tqdm>=4.66.0",
 ]
 
 # Optional dependencies
