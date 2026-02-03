@@ -245,34 +245,51 @@ class Engine:
     def _setup_devices(self, config):
         """
         Setups devices and DistributedDataParallel configuration.
-
         """
-        if self.distributed_training:
+        # Check if DDP is actually initialized (not just config flag)
+        ddp_initialized = dist.is_available() and dist.is_initialized()
+
+        if self.distributed_training and ddp_initialized:
+            # ===== DDP WORKER MODE (spawned or torchrun) =====
             # Global rank (0 to world_size-1)
             self.rank = dist.get_rank()
 
             # Local rank (0 to num_gpus_per_node-1)
-            # This is the actual GPU index on THIS machine
-            local_rank_str = os.environ.get('LOCAL_RANK', None)
+            local_rank_str = os.environ.get('LOCAL_RANK')
+            if local_rank_str is None:
+                # Try KITO_WORKER_RANK (from spawn)
+                local_rank_str = os.environ.get('KITO_WORKER_RANK')
+
             if local_rank_str is None:
                 raise RuntimeError(
                     "LOCAL_RANK environment variable not found. "
-                    "When using distributed training, launch with torchrun or set LOCAL_RANK manually."
+                    "This should be set by torchrun or Kito spawn."
                 )
-            self.local_rank = int(local_rank_str)
 
-            # Use local_rank for GPU assignment
+            self.local_rank = int(local_rank_str)
             self.gpu_id = self.local_rank
 
             # Only global rank 0 is the master/driver
             self.is_master = (self.rank == 0)
-            self.driver_device = self.is_master  # Alias for compatibility
-
-            # World size (total number of processes)
+            self.driver_device = self.is_master
             self.world_size = dist.get_world_size()
 
+        elif self.distributed_training and not ddp_initialized:
+            # ===== MAIN PROCESS (before spawning) =====
+            # DDP config enabled but not yet spawned - use defaults for main process
+            self.rank = 0
+            self.local_rank = config.training.device_id  # Use config default
+            self.gpu_id = config.training.device_id
+            self.is_master = True
+            self.driver_device = True
+            self.world_size = config.training.num_gpus or torch.cuda.device_count()
+
+            self.logger.log_info(
+                f"Main process: DDP will spawn {self.world_size} workers"
+            )
+
         else:
-            # Single GPU mode
+            # ===== SINGLE GPU MODE =====
             self.rank = 0
             self.local_rank = config.training.device_id
             self.gpu_id = config.training.device_id
@@ -290,6 +307,7 @@ class Engine:
             f"  Requested: {device_type}\n"
             f"  Assigned: {self.device}\n"
             f"  Available: {available}"
+            f"  Rank: {self.rank}/{self.world_size}"
         )
 
     # ========================================================================
