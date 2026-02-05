@@ -5,9 +5,6 @@ class ReadinessValidator:
     """
     Validates module readiness for different operations.
 
-    This replaces the decorator pattern with a cleaner strategy pattern
-    that is easier to test and extend.
-
     Usage:
         # In Engine
         ReadinessValidator.check_for_training(module)
