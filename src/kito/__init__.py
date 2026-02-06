@@ -5,6 +5,7 @@ Define your model, Kito handles the rest.
 """
 
 __version__ = "0.2.15"
+__author__ = "Giuseppe Costantino"
 
 # Import main classes for top-level access
 from kito.engine import Engine
