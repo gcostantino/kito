@@ -222,7 +222,7 @@ class Engine:
             self.module.build()
             self.logger.log_info("Model built successfully.")
 
-        #  Auto-load weights if not already loaded and config specifies a path
+        #  Load weights automatically if not already loaded and config specifies a path
         if not self.module.is_weights_loaded:
             if self.config.model.weight_load_path is not None:
                 self.logger.log_info("Loading weights automatically...")
@@ -232,6 +232,8 @@ class Engine:
                     f"Weights not loaded for '{self.module.module_name}'. "
                     "Set config.model.weight_load_path or call module.load_weights() before inference."
                 )
+
+        self.module._move_to_device(self.device)  # finally, move module to device
 
     # ========================================================================
     # Device handling
