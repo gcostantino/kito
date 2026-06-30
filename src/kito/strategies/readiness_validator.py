@@ -24,19 +24,19 @@ class ReadinessValidator:
         """
         if not module.is_built:
             raise RuntimeError(
-                f"Module '{module.model_name}' not built. "
+                f"Module '{module.module_name}' not built. "
                 "Call module.build() before training."
             )
 
         if not module.is_optimizer_set:
             raise RuntimeError(
-                f"Module '{module.model_name}' optimizer not set. "
+                f"Module '{module.module_name}' optimizer not set. "
                 "Call module.associate_optimizer() before training."
             )
 
         if module.learning_rate is None:
             raise RuntimeError(
-                f"Module '{module.model_name}' learning_rate not set."
+                f"Module '{module.module_name}' learning_rate not set."
             )
 
     @staticmethod
@@ -53,13 +53,13 @@ class ReadinessValidator:
         """
         if not module.is_built:
             raise RuntimeError(
-                f"Module '{module.model_name}' not built. "
+                f"Module '{module.module_name}' not built. "
                 "Call module.build() before inference."
             )
 
-        if not module.is_weights_loaded:
+        if not module.is_weights_loaded and module.has_learnable_weights:
             raise RuntimeError(
-                f"Module '{module.model_name}' weights not loaded. "
+                f"Module '{module.module_name}' weights not loaded. "
                 "Call module.load_weights() or engine.load_weights() before inference."
             )
 
@@ -81,7 +81,7 @@ class ReadinessValidator:
         """
         if not module.is_built:
             raise RuntimeError(
-                f"Module '{module.model_name}' not built. "
+                f"Module '{module.module_name}' not built. "
                 "Call module.build() before this operation."
             )
 

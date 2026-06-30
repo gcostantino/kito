@@ -222,8 +222,10 @@ class Engine:
             self.module.build()
             self.logger.log_info("Model built successfully.")
 
+        if not self.module.has_learnable_weights:
+            self.logger.log_info("Fixed-weight model. Skipping weight loading...")  # fixed-weight model
         #  Load weights automatically if not already loaded and config specifies a path
-        if not self.module.is_weights_loaded:
+        elif not self.module.is_weights_loaded:
             if self.config.model.weight_load_path is not None:
                 self.logger.log_info("Loading weights automatically...")
                 self.load_weights()

@@ -73,6 +73,7 @@ class KitoModule(ABC):
             self.loss = None
 
         # State flags
+        self.has_learnable_weights = True
         self._model_built = False
         self._optimizer_bound = False
         self._weights_loaded = False
