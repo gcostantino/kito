@@ -82,10 +82,6 @@ class H5Dataset(KitoDataset):
         self.dataset_labels = None
         self.h5file = None
 
-        # Get dataset length (without lazy loading)
-        with h5py.File(self.file_path, 'r') as file:
-            self.dataset_len = len(file["data"])
-
     def _lazy_load(self):
         """
         Open HDF5 file and get dataset references.
@@ -104,8 +100,9 @@ class H5Dataset(KitoDataset):
         self._lazy_load()
         return self.dataset_data[index], self.dataset_labels[index]
 
+    @abstractmethod
     def __len__(self):
-        return self.dataset_len
+        ...
 
     def __del__(self):
         """Close HDF5 file when object is destroyed."""
