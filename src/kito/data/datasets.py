@@ -100,9 +100,9 @@ class H5Dataset(KitoDataset):
         self._lazy_load()
         return self.dataset_data[index], self.dataset_labels[index]
 
-    @abstractmethod
     def __len__(self):
-        ...
+        self._lazy_load()
+        return len(self.dataset_data)
 
     def __del__(self):
         """Close HDF5 file when object is destroyed."""

@@ -12,7 +12,8 @@ from torch.utils.data import DataLoader
 from kito.callbacks.callback_base import Callback, CallbackList
 from kito.callbacks.ddp_aware_callback import DDPAwareCallback
 from kito.config.moduleconfig import CallbacksConfig, KitoModuleConfig
-from kito.data.datapipeline import GenericDataPipeline
+from kito.data.datapipeline import GenericDataPipeline, EmptySplitError
+from kito.data.inference import as_dataloader
 from kito.module import KitoModule
 from kito.strategies.logger_strategy import DDPLogger, DefaultLogger
 from kito.strategies.progress_bar_strategy_tqdm import (
@@ -173,6 +174,9 @@ class Engine:
         # First batch flag for data shape checking
         self._first_train_batch = True
 
+        # keep track of pretrained weight loading
+        self._pretrained_loaded = False
+
     # ========================================================================
     # AUTO-SETUP (Hybrid approach)
     # ========================================================================
@@ -194,8 +198,10 @@ class Engine:
             self.logger.log_info("Model built successfully.")
 
         # load pretrained weights if specified (for transfer learning / fine-tuning)
-        if self.config.training.initialize_model_with_saved_weights:
+        if (self.config.training.initialize_model_with_saved_weights
+                and not getattr(self, '_pretrained_loaded', False)):
             self.load_weights()
+            self._pretrained_loaded = True
 
         # Auto-setup optimizer if needed
         if not self.module.is_optimizer_set:
@@ -355,16 +361,25 @@ class Engine:
                 train_loader, val_loader, data_pipeline, max_epochs, callbacks
             )
 
-        self._ensure_model_ready_for_training()
-
-        if data_pipeline is not None:
-            train_loader = data_pipeline.train_dataloader()
-            val_loader = data_pipeline.val_dataloader()
-
         if train_loader is None and data_pipeline is None:
             raise ValueError("Must provide either train_loader or data_pipeline")
 
-        # Validate readiness (should always pass after auto-setup)
+        if data_pipeline is not None:
+            if data_pipeline.dataset is None:
+                data_pipeline.setup()
+            train_loader = data_pipeline.train_dataloader()
+            try:
+                val_loader = data_pipeline.val_dataloader()
+            except EmptySplitError:
+                val_loader = None
+
+        if val_loader is None:
+            self.logger.log_warning(
+                "No validation data: training without validation. "
+                "Callbacks monitoring 'val_loss' will not work (use monitor='train_loss')."
+            )
+
+        self._ensure_model_ready_for_training()
         ReadinessValidator.check_for_training(self.module)
         ReadinessValidator.check_data_loaders(train_loader=train_loader, val_loader=val_loader)
 
@@ -372,6 +387,9 @@ class Engine:
         if max_epochs is None:
             max_epochs = self.config.training.n_train_epochs
         self.max_epochs = max_epochs
+        self.stop_training = False
+        self.current_epoch = 0
+
 
         # Wrap model for DDP if needed
         if self.distributed_training:
@@ -423,17 +441,15 @@ class Engine:
                     self.config.training.train_verbosity_level
                 )
 
-                # Validate epoch
-                val_loss, val_data, val_outputs = self._validate_epoch(
-                    val_loader,
-                    self.config.training.val_verbosity_level
-                )
-
-                # Prepare logs
-                logs = {
-                    'train_loss': train_loss,
-                    'val_loss': val_loss
-                }
+                # Validate epoch, if dataloader is not None, and prepare logs
+                if val_loader is not None:
+                    val_loss, val_data, val_outputs = self._validate_epoch(
+                        val_loader, self.config.training.val_verbosity_level
+                    )
+                    logs = {'train_loss': train_loss, 'val_loss': val_loss}
+                else:
+                    val_data, val_outputs = (None, None), None
+                    logs = {'train_loss': train_loss}
 
                 # ===== HOOK: on_epoch_end =====
                 callbacks.on_epoch_end(
@@ -469,6 +485,9 @@ class Engine:
 
         Iterates over batches and calls module.training_step(batch).
         """
+        if len(train_loader) == 0:
+            raise ValueError("train_loader is empty (0 batches)")
+
         self.module.model.train()
 
         # Set epoch for DDP sampler
@@ -522,6 +541,9 @@ class Engine:
 
         Iterates over batches and calls module.validation_step(batch).
         """
+        if len(val_loader) == 0:
+            raise ValueError("val_loader is empty (0 batches)")
+
         self.module.model.eval()
 
         # Init progress bar
@@ -572,38 +594,46 @@ class Engine:
     @require_mode('inference')
     def predict(
             self,
+            data=None,
+            *,
+            batch_size: Optional[int] = None,
+            preprocessing=None,
             test_loader: DataLoader = None,
             data_pipeline: GenericDataPipeline = None
     ):
         """
-        Run inference on test data.
-
-        This method auto-loads weights (or user must load explicitly).
-
-        IMPORTANT: prediction_step is called once on a sample batch to infer output shape.
+        Run inference on any kind of data.
 
         Args:
-            test_loader: Test DataLoader
-            data_pipeline: Data pipeline for inference
+            data: DataLoader, data pipeline, Dataset, numpy array, tensor, list,
+                or an (x, y) tuple. Arrays/Datasets are wrapped in a DataLoader
+                automatically (no shuffling, no dropped samples).
+            batch_size: Overrides config.training.batch_size (arrays/Datasets only).
+            preprocessing: None -> use config.data.preprocessing; False -> disable;
+                a Preprocessing instance / list of steps -> use these instead.
+                Not applied to DataLoaders or pipelines.
+            test_loader: Deprecated alias for `data`.
+            data_pipeline: Deprecated alias for `data`.
 
         Returns:
             numpy.ndarray: Predictions (if config.model.save_inference_to_disk=False)
             None: If config.model.save_inference_to_disk=True
 
         Example:
-            # Load weights first (explicit)
-            module.load_weights('weights/best.pt')
-
-            # Predict (auto-builds if needed)
-            predictions = engine.predict(test_loader)
+            predictions = engine.predict(x_external)
+            predictions = engine.predict(x_external, batch_size=16)
+            predictions = engine.predict(my_loader)
         """
         self._ensure_model_ready_for_inference()
 
-        if data_pipeline is not None:
-            test_loader = data_pipeline.test_dataloader()
+        if data is None:
+            data = test_loader if test_loader is not None else data_pipeline
+        if data is None:
+            raise ValueError("Must provide data (DataLoader, Dataset, array, tensor or pipeline)")
 
-        if test_loader is None and data_pipeline is None:
-            raise ValueError("Must provide either test_loader or data_pipeline")
+        test_loader = as_dataloader(
+            data, self.config, batch_size=batch_size, preprocessing=preprocessing
+        )
 
         # Validate (will warn if weights not loaded)
         ReadinessValidator.check_for_inference(self.module)
@@ -619,14 +649,10 @@ class Engine:
         self._log_inference_info(len(test_loader), save_to_disk, output_path)
 
         # Prepare storage
-        storage = self._prepare_prediction_storage(
-            test_loader,
-            save_to_disk,
-            output_path
-        )
-
-        # Run inference
+        # eval() BEFORE any forward pass (storage preparation runs one)
         self.module.model.eval()
+
+        storage = self._prepare_prediction_storage(test_loader, save_to_disk, output_path)
 
         self.inference_pbar.init(
             len(test_loader),
@@ -634,22 +660,18 @@ class Engine:
             message='Evaluating model in inference mode'
         )
 
-        with torch.no_grad():
-            for batch_idx, batch in enumerate(test_loader):
-                # ===== Call module's prediction_step =====
-                outputs = self.module.prediction_step(batch, self.inference_pbar)
-
-                # Store predictions
-                self._store_predictions(
-                    storage,
-                    batch_idx,
-                    outputs,
-                    test_loader.batch_size,
-                    len(test_loader.dataset)
-                )
-
-                # Update progress bar
-                self.inference_pbar.step(batch_idx + 1, values=None)
+        try:
+            with torch.no_grad():
+                offset = 0
+                dataset_len = len(test_loader.dataset)
+                for batch_idx, batch in enumerate(test_loader):
+                    outputs = self.module.prediction_step(batch, self.inference_pbar)
+                    offset = self._store_predictions(storage, offset, outputs, dataset_len)
+                    self.inference_pbar.step(batch_idx + 1, values=None)
+        except BaseException:
+            if storage['type'] == 'disk':
+                storage['file'].close()   # don't leak the HDF5 handle
+            raise
 
         # Finalize storage
         result = self._finalize_prediction_storage(storage, save_to_disk, output_path)
@@ -684,7 +706,7 @@ class Engine:
             full_shape = (total_samples,) + output_shape
 
         # Use a reasonable chunk size (not tied to actual batch size)
-        chunk_size = min(test_loader.batch_size, 32)  # Cap at 32 for HDF5 efficiency
+        chunk_size = min(test_loader.batch_size or sample_output.shape[0], 32)  # cap at 32 for HDF5 efficiency
 
         if save_to_disk:
             # Validate output path
@@ -708,20 +730,12 @@ class Engine:
             self.logger.log_info(f"Created tensor in memory to store predictions.")
             return {'type': 'memory', 'data': predictions}
 
-    def _store_predictions(self, storage, batch_idx, outputs, nominal_batch_size, dataset_len):
-        """Store predictions for a batch."""
-        batch_data = outputs.cpu().detach().numpy()
-
-        # Use actual batch size from output, not nominal batch size
-        actual_batch_size = batch_data.shape[0]
-
-        start_idx = batch_idx * nominal_batch_size
-        end_idx = min(start_idx + actual_batch_size, dataset_len)
-
-        if storage['type'] == 'disk':
-            storage['dataset'][start_idx:end_idx] = batch_data
-        else:
-            storage['data'][start_idx:end_idx] = batch_data
+    def _store_predictions(self, storage, offset, outputs, dataset_len):
+        batch_data = outputs.detach().cpu().numpy()
+        end = min(offset + batch_data.shape[0], dataset_len)
+        target = storage['dataset'] if storage['type'] == 'disk' else storage['data']
+        target[offset:end] = batch_data[:end - offset]
+        return end
 
     def _finalize_prediction_storage(self, storage, save_to_disk, output_path):
         """Finalize storage and return result."""

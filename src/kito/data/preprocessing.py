@@ -32,6 +32,7 @@ class Preprocessing(ABC):
                 # Transform data
                 return processed_data, labels
     """
+    training_only = False
 
     @abstractmethod
     def __call__(self, data, labels) -> Tuple:
@@ -236,6 +237,7 @@ class AddNoise(Preprocessing):
         >>> noise = AddNoise(std=0.01)
         >>> data, labels = noise(data, labels)
     """
+    training_only = True
 
     def __init__(self, std: float = 0.01, mean: float = 0.0):
         self.std = std

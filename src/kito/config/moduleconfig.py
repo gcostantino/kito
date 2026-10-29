@@ -65,6 +65,8 @@ class DataConfig:
 
     # Total samples to use (None = use all available)
     total_samples: Optional[int] = None
+    shuffle_split: bool = False   # random (seeded) split instead of contiguous slices
+    split_seed: int = 0
 
     # Preprocessing pipeline
     # List of preprocessing steps applied in order

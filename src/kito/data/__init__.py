@@ -1,7 +1,9 @@
 # src/kito/data/__init__.py
 """Kito Data - Datasets, preprocessing, and pipelines"""
 
+from kito.data.datapipeline import GenericDataPipeline, BaseDataPipeline
 from kito.data.datasets import KitoDataset, H5Dataset, MemDataset
+from kito.data.inference import as_dataloader, InferenceDataset
 from kito.data.preprocessing import (
     Preprocessing,
     Pipeline,
@@ -9,7 +11,6 @@ from kito.data.preprocessing import (
     Standardization,
     ToTensor
 )
-from kito.data.datapipeline import GenericDataPipeline, BaseDataPipeline
 from kito.data.registry import DATASETS, PREPROCESSING
 
 __all__ = [
@@ -32,4 +33,8 @@ __all__ = [
     # Registries
     "DATASETS",
     "PREPROCESSING",
+
+    # Inference-related
+    "as_dataloader",
+    "InferenceDataset"
 ]

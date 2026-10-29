@@ -12,6 +12,7 @@ This separates data concerns from model training logic.
 from abc import ABC, abstractmethod
 from typing import Optional
 
+import torch
 import torch.distributed as dist
 from torch.utils.data import DataLoader, Subset, DistributedSampler
 
@@ -19,6 +20,10 @@ from kito.config.moduleconfig import KitoModuleConfig
 from kito.data.datasets import KitoDataset
 from kito.data.preprocessed_dataset import PreprocessedDataset
 from kito.data.preprocessing import Preprocessing
+
+
+class EmptySplitError(ValueError):
+    """Raised when a requested split (train/val/test) has no samples."""
 
 
 class BaseDataPipeline(ABC):
@@ -157,33 +162,33 @@ class GenericDataPipeline(BaseDataPipeline):
         self._create_dataloaders()
 
     def _create_splits(self):
-        """
-        Create train/val/test splits using Subset.
+        """Create train/val/test subsets from train_ratio / val_ratio."""
+        n = len(self.dataset)
+        total = self.data_config.total_samples
+        if total is None:
+            total = n
+        if total > n:
+            raise ValueError(f"total_samples={total} exceeds dataset length {n}")
 
-        Splits based on data_config.train_ratio and data_config.val_ratio.
-        """
-        total_samples = self.data_config.total_samples
-        if total_samples is None:
-            total_samples = len(self.dataset)
+        tr, vr = self.data_config.train_ratio, self.data_config.val_ratio
+        if not (0.0 <= tr <= 1.0 and 0.0 <= vr <= 1.0 and tr + vr <= 1.0 + 1e-9):
+            raise ValueError(
+                f"Invalid split ratios: train_ratio={tr}, val_ratio={vr} "
+                "(each must be in [0, 1] and their sum <= 1)"
+            )
 
-        # Calculate split indices
-        train_size = int(total_samples * self.data_config.train_ratio)
-        val_size = int(total_samples * self.data_config.val_ratio)
-        test_size = total_samples - train_size - val_size
+        train_size = int(total * tr)
+        val_size = int(total * vr)
 
-        # Create subsets
-        self.train_dataset = Subset(
-            self.dataset,
-            list(range(0, train_size))
-        )
-        self.val_dataset = Subset(
-            self.dataset,
-            list(range(train_size, train_size + val_size))
-        )
-        self.test_dataset = Subset(
-            self.dataset,
-            list(range(train_size + val_size, total_samples))
-        )
+        if getattr(self.data_config, 'shuffle_split', False):
+            g = torch.Generator().manual_seed(getattr(self.data_config, 'split_seed', 0))
+            indices = torch.randperm(total, generator=g).tolist()  # same on every rank
+        else:
+            indices = list(range(total))
+
+        self.train_dataset = Subset(self.dataset, indices[:train_size])
+        self.val_dataset = Subset(self.dataset, indices[train_size:train_size + val_size])
+        self.test_dataset = Subset(self.dataset, indices[train_size + val_size:])
 
     def _create_dataloaders(self):
         """
@@ -276,26 +281,29 @@ class GenericDataPipeline(BaseDataPipeline):
             if self.test_dataset is not None:
                 print("Warning: Test dataset is empty. Skipping test_loader creation.")
 
-            # validation: at least one loader must exist
-            if self.train_loader is None and self.val_loader is None and self.test_loader is None:
-                raise ValueError(
-                    "All dataloaders are None! At least one of (train_dataset, val_dataset, test_dataset) "
-                    "must be provided and non-empty.")
+        # validation: at least one loader must exist
+        if self.train_loader is None and self.val_loader is None and self.test_loader is None:
+            raise ValueError(
+                "All dataloaders are None! At least one of (train_dataset, val_dataset, test_dataset) "
+                "must be provided and non-empty.")
+
+    def _get_loader(self, name: str) -> DataLoader:
+        loader = getattr(self, f'{name}_loader')
+        if loader is None:
+            if self.dataset is None:
+                raise RuntimeError("Call setup() before accessing dataloaders")
+            raise EmptySplitError(
+                f"The '{name}' split is empty "
+                f"(train_ratio={self.data_config.train_ratio}, val_ratio={self.data_config.val_ratio})"
+            )
+        return loader
 
     def train_dataloader(self) -> DataLoader:
-        """Return training DataLoader."""
-        if self.train_loader is None:
-            raise RuntimeError("Call setup() before accessing dataloaders")
-        return self.train_loader
+        return self._get_loader('train')
 
     def val_dataloader(self) -> DataLoader:
-        """Return validation DataLoader."""
-        if self.val_loader is None:
-            raise RuntimeError("Call setup() before accessing dataloaders")
-        return self.val_loader
+        return self._get_loader('val')
 
     def test_dataloader(self) -> DataLoader:
-        """Return test DataLoader."""
-        if self.test_loader is None:
-            raise RuntimeError("Call setup() before accessing dataloaders")
-        return self.test_loader
+        return self._get_loader('test')
+
