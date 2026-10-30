@@ -2,11 +2,12 @@
 """Kito Callbacks - For custom training behavior"""
 
 from kito.callbacks.callback_base import Callback, CallbackList
-from kito.callbacks.modelcheckpoint import ModelCheckpoint
 from kito.callbacks.csv_logger import CSVLogger
-from kito.callbacks.txt_logger import TextLogger
+from kito.callbacks.ddp_aware_callback import DDPAwareCallback
+from kito.callbacks.early_stopping_callback import EarlyStoppingCallback
+from kito.callbacks.modelcheckpoint import ModelCheckpoint
 from kito.callbacks.tensorboard_callbacks import TensorBoardScalars, TensorBoardGraph, TensorBoardHistograms
-# ... other callbacks
+from kito.callbacks.txt_logger import TextLogger
 
 __all__ = [
     "Callback",
@@ -16,5 +17,7 @@ __all__ = [
     "TextLogger",
     "TensorBoardScalars",
     "TensorBoardGraph",
-    "TensorBoardHistograms"
+    "TensorBoardHistograms",
+    "EarlyStoppingCallback",
+    "DDPAwareCallback"
 ]

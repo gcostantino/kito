@@ -1,10 +1,10 @@
 """
-Kito: Effortless PyTorch Training
+Effortless PyTorch training and (scientific) experimentation
 
-Define your model, Kito handles the rest.
+Define your model setup, Kito handles the rest.
 """
 
-__version__ = "0.2.16"
+__version__ = "1.0.0"
 __author__ = "Giuseppe Costantino"
 
 # Import main classes for top-level access

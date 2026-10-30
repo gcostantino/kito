@@ -96,7 +96,7 @@ class TrainingConfig:
 
     # Distributed training
     distributed_training: bool = False
-    device_id: int = 0  # Only used if not distributed (if distributed, this rank handles callbacks and logging)
+    device_id: int = 0  # GPU index used when not distributed; in DDP each rank uses its own GPU
     ddp_find_unused_parameters: bool = False
 
     # Weight initialization

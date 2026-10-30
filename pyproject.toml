@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "pytorch-kito"
 dynamic = ["version"]
-description = "Effortless PyTorch training - define your model, Kito handles the rest"
+description = "Effortless PyTorch training and (scientific) experimentation - define your model setup, Kito handles the rest."
 readme = "README.md"
 requires-python = ">=3.9"
 license = {file = "LICENSE"}
