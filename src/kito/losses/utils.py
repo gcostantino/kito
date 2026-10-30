@@ -92,46 +92,7 @@ def discover_losses(directory: Union[str, Path] = './losses', verbose: bool = Tr
     return new_count
 
 
-def _auto_discover_loss(loss_name: str, verbose: bool = False) -> bool:
-    """
-    Try to auto-discover a specific loss from common directories.
 
-    Called automatically when a loss is not found in registry.
-    Searches in order:
-    1. ./losses/
-    2. ./custom_losses/
-    3. ./lib/losses/
-
-    Args:
-        loss_name: Name of the loss to find
-        verbose: Print discovery messages
-
-    Returns:
-        True if loss was found and registered, False otherwise
-    """
-    # Common directories to search
-    search_dirs = [
-        './losses',
-        './custom_losses',
-        './lib/losses',
-    ]
-
-    for directory in search_dirs:
-        initial_registered = LossRegistry.is_registered(loss_name)
-
-        if initial_registered:
-            return True
-
-        # Try to discover from this directory
-        discover_losses(directory, verbose=False)
-
-        # Check if loss is now registered
-        if LossRegistry.is_registered(loss_name):
-            if verbose:
-                print(f"Auto-discovered '{loss_name}' from {directory}/")
-            return True
-
-    return False
 
 
 def get_loss(loss_config):
