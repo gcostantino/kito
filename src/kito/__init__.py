@@ -25,6 +25,10 @@ from kito.data.preprocessing import (
 # Import registries
 from kito.data.registry import DATASETS, PREPROCESSING
 
+# logging
+from kito.utils.logging_utils import configure_logging, get_logger
+# Users can write kito.configure_logging(logging.DEBUG) or pass stream=open('run.log', 'a')
+
 # Define what's available with "from kito import *"
 __all__ = [
     # Core
