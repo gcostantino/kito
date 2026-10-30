@@ -1,8 +1,10 @@
-import logging
+
 
 import torch
 
+from kito import get_logger
 
+logger = get_logger(__name__)
 def assign_device(device_type: str = "cuda", gpu_id: int = 0) -> torch.device:
     """
     Assign device based on preference and availability.
@@ -35,14 +37,14 @@ def assign_device(device_type: str = "cuda", gpu_id: int = 0) -> torch.device:
                 raise ValueError(f"gpu_id={gpu_id} but only {n} CUDA device(s) are available")
             return torch.device(f'cuda:{gpu_id}')
         else:
-            logging.getLogger('kito').warning("CUDA requested but not available. Falling back to CPU.")
+            logger.warning("CUDA requested but not available. Falling back to CPU.")
             return torch.device("cpu")
 
     elif device_type_lower == "mps":
         if torch.backends.mps.is_available():
             return torch.device("mps")
         else:
-            logging.getLogger('kito').warning("Warning: MPS requested but not available. Falling back to CPU.")
+            logger.warning("Warning: MPS requested but not available. Falling back to CPU.")
             return torch.device("cpu")
 
     elif device_type_lower == "cpu":

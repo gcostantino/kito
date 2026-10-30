@@ -16,11 +16,13 @@ import torch
 import torch.distributed as dist
 from torch.utils.data import DataLoader, Subset, DistributedSampler
 
+from kito import get_logger
 from kito.config.moduleconfig import KitoModuleConfig
 from kito.data.datasets import KitoDataset
 from kito.data.preprocessed_dataset import PreprocessedDataset
 from kito.data.preprocessing import Preprocessing
 
+logger = get_logger(__name__)
 
 class EmptySplitError(ValueError):
     """Raised when a requested split (train/val/test) has no samples."""
@@ -237,7 +239,7 @@ class GenericDataPipeline(BaseDataPipeline):
         else:
             self.train_loader = None
             if self.train_dataset is not None:
-                print("Warning: Training dataset is empty. Skipping train_loader creation.")
+                logger.info("Warning: Training dataset is empty. Skipping train_loader creation.")
 
         # Val loader (no shuffling)
         if self.val_dataset is not None and len(self.val_dataset) > 0:
@@ -258,7 +260,7 @@ class GenericDataPipeline(BaseDataPipeline):
         else:
             self.val_loader = None
             if self.val_dataset is not None:
-                print("Warning: Validation dataset is empty. Skipping val_loader creation.")
+                logger.info("Warning: Validation dataset is empty. Skipping val_loader creation.")
 
         # Test loader (no shuffling)
         if self.test_dataset is not None and len(self.test_dataset) > 0:
@@ -279,7 +281,7 @@ class GenericDataPipeline(BaseDataPipeline):
         else:
             self.test_loader = None
             if self.test_dataset is not None:
-                print("Warning: Test dataset is empty. Skipping test_loader creation.")
+                logger.info("Warning: Test dataset is empty. Skipping test_loader creation.")
 
         # validation: at least one loader must exist
         if self.train_loader is None and self.val_loader is None and self.test_loader is None:
@@ -306,4 +308,3 @@ class GenericDataPipeline(BaseDataPipeline):
 
     def test_dataloader(self) -> DataLoader:
         return self._get_loader('test')
-

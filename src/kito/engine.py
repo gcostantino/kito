@@ -1,5 +1,6 @@
 import datetime
 import os
+import socket
 from pathlib import Path
 from typing import List, Optional
 
@@ -9,6 +10,7 @@ import torch
 import torch.distributed as dist
 from torch.utils.data import DataLoader
 
+from kito import get_logger
 from kito.callbacks.callback_base import Callback, CallbackList
 from kito.callbacks.ddp_aware_callback import DDPAwareCallback
 from kito.config.moduleconfig import CallbacksConfig, KitoModuleConfig
@@ -23,7 +25,6 @@ from kito.strategies.progress_bar_strategy_tqdm import (
 from kito.strategies.readiness_validator import ReadinessValidator
 from kito.utils.decorators import require_mode
 from kito.utils.gpu_utils import assign_device, get_available_devices
-import socket
 from kito.utils.model_utils import unwrap_model
 
 
@@ -76,7 +77,7 @@ def _ddp_worker_fn(rank, worker_args, world_size):
         )
 
     except KeyboardInterrupt:
-        print(f"Worker {rank}: Interrupted")
+        get_logger(__name__).info(f"Worker {rank}: Interrupted")
     finally:
         if dist.is_initialized():
             dist.destroy_process_group()
@@ -1159,7 +1160,7 @@ class Engine:
             weight_path: Path to weight file
             strict: Strict loading
         """
-        #if weight_path is None:
+        # if weight_path is None:
         #    weight_path = self.config.model.weight_load_path
         weight_path = weight_path or self.config.model.weight_load_path
         ReadinessValidator.check_model_built(self.module)

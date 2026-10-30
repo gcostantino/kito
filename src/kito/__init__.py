@@ -51,4 +51,8 @@ __all__ = [
     # Registries
     "DATASETS",
     "PREPROCESSING",
+
+    # Logging
+    "get_logger",
+    "configure_logging"
 ]

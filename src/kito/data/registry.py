@@ -16,6 +16,8 @@ import importlib.util
 import sys
 from pathlib import Path
 
+from kito import get_logger
+
 
 class Registry:
     """
@@ -161,8 +163,8 @@ class Registry:
                         sys.modules[module_name] = module
                         spec.loader.exec_module(module)
                 except Exception as e:
-                    if verbose:
-                        print(f"Warning: Could not load {py_file.name}: {e}")
+                    sys.modules.pop(module_name, None)
+                    get_logger(__name__).warning(f"Warning: Could not load {py_file.name}: {e}")
 
     def create(self, name: str, **kwargs):
         """
