@@ -1,7 +1,9 @@
 import os
+
 import torch
 
 from kito.callbacks.callback_base import Callback
+from kito.utils.model_utils import unwrap_model
 
 
 class ModelCheckpoint(Callback):
@@ -37,6 +39,7 @@ class ModelCheckpoint(Callback):
         self.save_best_only = save_best_only
         self.mode = mode
         self.verbose = verbose
+        self._warned_missing = False
 
         # Track best metric
         self.best = float('inf') if mode == 'min' else float('-inf')
@@ -44,35 +47,32 @@ class ModelCheckpoint(Callback):
         # Create directory if needed
         os.makedirs(os.path.dirname(filepath) if os.path.dirname(filepath) else '.', exist_ok=True)
 
+    def on_train_begin(self, engine, model, **kwargs):
+        self.best = float('inf') if self.mode == 'min' else float('-inf')
+        self._warned_missing = False
+
     def on_epoch_end(self, epoch, engine, model, logs=None, **kwargs):
         """Save model if metric improved."""
         if logs is None:
             return
-
         current = logs.get(self.monitor)
         if current is None:
+            if not self._warned_missing:
+                engine.logger.log_warning(
+                    f"ModelCheckpoint: '{self.monitor}' not in logs {list(logs)}; nothing will be saved."
+                )
+                self._warned_missing = True
             return
 
-        # Check if improved
-        improved = (
-                (self.mode == 'min' and current < self.best) or
-                (self.mode == 'max' and current > self.best)
-        )
-
+        improved = (self.mode == 'min' and current < self.best) or \
+                   (self.mode == 'max' and current > self.best)
         if improved or not self.save_best_only:
             self.best = current
-
-            # Format filepath
             filepath = self.filepath.format(epoch=epoch, **logs)
-
-            # Save model (handle DDP)
-            if hasattr(model, 'module'):
-                state_dict = model.module.state_dict()
-            else:
-                state_dict = model.state_dict()
-
-            torch.save(state_dict, filepath)
-
+            tmp = f"{filepath}.tmp"
+            torch.save(unwrap_model(model).state_dict(), tmp)
+            os.replace(tmp, filepath)  # atomic: no half-written checkpoint
             if self.verbose:
-                print(f"\nEpoch {epoch}: {self.monitor} improved to {current:.4f}, "
-                      f"saving model to {filepath}")
+                engine.logger.log_info(
+                    f"Epoch {epoch}: {self.monitor} improved to {current:.4f}, saved to {filepath}"
+                )
