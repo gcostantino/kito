@@ -23,6 +23,14 @@ from kito.strategies.progress_bar_strategy_tqdm import (
 from kito.strategies.readiness_validator import ReadinessValidator
 from kito.utils.decorators import require_mode
 from kito.utils.gpu_utils import assign_device, get_available_devices
+import socket
+from kito.utils.model_utils import unwrap_model
+
+
+def _find_free_port() -> int:
+    with socket.socket() as s:
+        s.bind(('', 0))
+        return s.getsockname()[1]
 
 
 def _ddp_worker_fn(rank, worker_args, world_size):
@@ -390,7 +398,6 @@ class Engine:
         self.stop_training = False
         self.current_epoch = 0
 
-
         # Wrap model for DDP if needed
         if self.distributed_training:
             self._wrap_model_ddp()
@@ -461,6 +468,8 @@ class Engine:
                     val_outputs=val_outputs
                 )
 
+                self._sync_stop_flag()
+
                 # Check early stopping
                 if self.stop_training:
                     self.logger.log_info(f"\nStopping training at epoch {self.current_epoch}")
@@ -470,12 +479,15 @@ class Engine:
             self.logger.log_info(f"\nTraining interrupted at epoch {self.current_epoch}")
 
         finally:
-            # ===== HOOK: on_train_end =====
-            callbacks.on_train_end(engine=self, model=self.module.model)
-
-            # Cleanup DDP
-            if self.distributed_training:
-                dist.destroy_process_group()
+            try:
+                # ===== HOOK: on_train_end =====
+                callbacks.on_train_end(engine=self, model=self.module.model)
+            finally:
+                # Cleanup DDP
+                if self.distributed_training:
+                    self.module.model = unwrap_model(self.module.model)
+                    if dist.is_available() and dist.is_initialized():
+                        dist.destroy_process_group()
 
         self.logger.log_info(f"\nTraining of {self.module.module_name} completed.")
 
@@ -533,7 +545,7 @@ class Engine:
             self.train_pbar.close()
 
         # Return average loss
-        return running_loss / len(train_loader)
+        return self._reduce_mean(running_loss / len(train_loader))
 
     def _validate_epoch(self, val_loader, verbosity_level):
         """
@@ -581,7 +593,7 @@ class Engine:
             finally:
                 self.val_pbar.close()
         # Average loss
-        avg_loss = running_loss / len(val_loader)
+        avg_loss = self._reduce_mean(running_loss / len(val_loader))
 
         # Package validation data for callbacks
         val_data = (last_inputs, last_targets)
@@ -670,7 +682,7 @@ class Engine:
                     self.inference_pbar.step(batch_idx + 1, values=None)
         except BaseException:
             if storage['type'] == 'disk':
-                storage['file'].close()   # don't leak the HDF5 handle
+                storage['file'].close()  # don't leak the HDF5 handle
             raise
 
         # Finalize storage
@@ -785,7 +797,7 @@ class Engine:
 
         import torch.multiprocessing as mp
 
-        nprocs = self.world_size
+        nprocs = int(os.environ.get('KITO_NPROCS', self.world_size))  # KITO_NPROCS lets you test on CPU (torch-gloo)
 
         if nprocs < 2:
             raise ValueError(
@@ -795,9 +807,10 @@ class Engine:
 
         self.logger.log_info(f"Spawning {nprocs} processes for DDP training...")
 
-        # Set master address
-        os.environ['MASTER_ADDR'] = os.environ.get('MASTER_ADDR', 'localhost')
-        os.environ['MASTER_PORT'] = os.environ.get('MASTER_PORT', '12355')
+        # Set master addresses
+        os.environ.setdefault('MASTER_ADDR', 'localhost')
+        if 'MASTER_PORT' not in os.environ:
+            os.environ['MASTER_PORT'] = str(_find_free_port())
 
         # Prepare args to pass to workers
         worker_args = {
@@ -858,7 +871,8 @@ class Engine:
             # Initialize process group
             backend = 'nccl' if torch.cuda.is_available() else 'gloo'
             dist.init_process_group(backend=backend, rank=rank, world_size=world_size)
-            torch.cuda.set_device(rank)
+            if torch.cuda.is_available():
+                torch.cuda.set_device(rank)
 
             self.logger.log_info(
                 f"DDP initialized via spawn: backend={backend}, "
@@ -887,6 +901,8 @@ class Engine:
             # Initialize process group (torchrun already set rank/world_size)
             backend = 'nccl' if torch.cuda.is_available() else 'gloo'
             dist.init_process_group(backend=backend)
+            if torch.cuda.is_available():
+                torch.cuda.set_device(int(local_rank))
 
             self.logger.log_info(
                 f"DDP initialized via torchrun: backend={backend}, "
@@ -908,15 +924,33 @@ class Engine:
         if not isinstance(self.module.model, DistributedDataParallel):
             # Model should already be on correct device before wrapping
             # DDP will handle device placement internally
-            self.module.model = DistributedDataParallel(
-                self.module.model,
-                device_ids=[self.gpu_id]
-            )
+            if torch.device(self.device).type == 'cuda':
+                ddp_kwargs = dict(device_ids=[self.gpu_id], output_device=self.gpu_id)
+            else:
+                ddp_kwargs = {}
+            self.module.model = DistributedDataParallel(self.module.model, **ddp_kwargs)
+
             # self.module._move_to_device(self.device)
             self.logger.log_info("Model wrapped in DistributedDataParallel.")
 
             # Note: Do NOT call _move_to_device after DDP wrapping
             # DDP already manages device placement via device_ids
+
+    def _reduce_mean(self, value: float) -> float:
+        """Average a scalar across ranks (no-op outside DDP)."""
+        if not (self.distributed_training and dist.is_available() and dist.is_initialized()):
+            return value
+        t = torch.tensor([value], dtype=torch.float64, device=self.device)
+        dist.all_reduce(t, op=dist.ReduceOp.SUM)
+        return (t / dist.get_world_size()).item()
+
+    def _sync_stop_flag(self):
+        """Make every rank follow rank 0's stop decision (avoids DDP deadlocks)."""
+        if not (self.distributed_training and dist.is_available() and dist.is_initialized()):
+            return
+        flag = torch.tensor([int(self.stop_training)], device=self.device)
+        dist.broadcast(flag, src=0)
+        self.stop_training = bool(flag.item())
 
     # ========================================================================
     # DEFAULT CALLBACKS
