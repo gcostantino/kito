@@ -175,6 +175,8 @@ class Engine:
         self.timestamp = datetime.datetime.now().strftime("%d%b%Y-%H%M%S")
         self.train_run_id = self.timestamp  # Alias for clarity
 
+        self._callbacks = CallbackList()  # replaced during fit()
+
         # Training state
         self.current_epoch = 0
         self.stop_training = False
@@ -420,23 +422,23 @@ class Engine:
         if self.distributed_training:
             callbacks = [DDPAwareCallback(cb, master_rank=0) for cb in callbacks]
 
-        callbacks = CallbackList(callbacks)
+        self._callbacks = CallbackList(callbacks)
 
         # Log training info
-        self._log_training_info(max_epochs, len(callbacks.callbacks))
+        self._log_training_info(max_epochs, len(self._callbacks.callbacks))
 
         # Reset first batch flag
         self._first_train_batch = True
 
         # ===== HOOK: on_train_begin =====
-        callbacks.on_train_begin(engine=self, model=self.module.model)
+        self._callbacks.on_train_begin(engine=self, model=self.module.model)
 
         try:
             for epoch in range(max_epochs):
                 self.current_epoch = epoch + 1
 
                 # ===== HOOK: on_epoch_begin =====
-                callbacks.on_epoch_begin(
+                self._callbacks.on_epoch_begin(
                     epoch=self.current_epoch,
                     engine=self,
                     model=self.module.model
@@ -459,7 +461,7 @@ class Engine:
                     logs = {'train_loss': train_loss}
 
                 # ===== HOOK: on_epoch_end =====
-                callbacks.on_epoch_end(
+                self._callbacks.on_epoch_end(
                     epoch=self.current_epoch,
                     engine=self,
                     model=self.module.model,
@@ -481,7 +483,8 @@ class Engine:
         finally:
             try:
                 # ===== HOOK: on_train_end =====
-                callbacks.on_train_end(engine=self, model=self.module.model)
+                self._callbacks.on_train_end(engine=self, model=self.module.model)
+                self._callbacks = CallbackList()  # not 100% this is the right place, maybe in the next finally?
             finally:
                 # Cleanup DDP
                 if self.distributed_training:
@@ -500,10 +503,10 @@ class Engine:
         if len(train_loader) == 0:
             raise ValueError("train_loader is empty (0 batches)")
 
-        self.module.model.train()
+        model = self.module.model
+        model.train()
 
         # Set epoch for DDP sampler
-
         if self.distributed_training:
             if hasattr(train_loader.sampler, 'set_epoch'):
                 train_loader.sampler.set_epoch(self.current_epoch)
@@ -529,23 +532,30 @@ class Engine:
                     self.module._check_data_shape(batch)
                     self._first_train_batch = False
 
-                # ===== Call module's training_step =====
+                self._callbacks.on_train_batch_begin(
+                    batch=batch_idx, engine=self, model=model, batch_data=batch
+                )
+
+                # Training step
                 step_output = self.module.training_step(batch, self.train_pbar)
 
                 # Extract loss
-                loss = step_output['loss']
-                running_loss += loss.item()
+                loss_value = step_output['loss'].item()
+                running_loss += loss_value
 
                 # Update progress bar
                 self.train_pbar.step(
                     batch_idx + 1,
-                    [("train_loss: ", float(f'{loss.item():.4f}'))]
+                    [('train_loss: ', round(loss_value, 4))]
+                )
+
+                self._callbacks.on_train_batch_end(
+                    batch=batch_idx, engine=self, model=model, logs={'loss': loss_value}
                 )
         finally:
             self.train_pbar.close()
 
-        # Return average loss
-        return self._reduce_mean(running_loss / len(train_loader))
+        return self._reduce_mean(running_loss / len(train_loader))  # Return average loss
 
     def _validate_epoch(self, val_loader, verbosity_level):
         """
@@ -556,7 +566,10 @@ class Engine:
         if len(val_loader) == 0:
             raise ValueError("val_loader is empty (0 batches)")
 
-        self.module.model.eval()
+        model = self.module.model
+        model.eval()
+
+        self._callbacks.on_validation_begin(epoch=self.current_epoch, engine=self, model=model)
 
         # Init progress bar
         self.val_pbar.init(
@@ -566,19 +579,17 @@ class Engine:
 
         # Accumulate metrics
         running_loss = 0.0
-        last_inputs = None
-        last_targets = None
-        last_outputs = None
+        last_inputs = last_targets = last_outputs = None
 
         with torch.no_grad():
             try:
                 for batch_idx, batch in enumerate(val_loader):
-                    # ===== Call module's validation_step =====
+                    # Validation_step =====
                     step_output = self.module.validation_step(batch, self.val_pbar)
 
                     # Extract metrics
-                    loss = step_output['loss']
-                    running_loss += loss.item()
+                    loss_value = step_output['loss'].item()
+                    running_loss += loss_value
 
                     # Store last batch for callbacks
                     last_outputs = step_output.get('outputs')
@@ -588,12 +599,16 @@ class Engine:
                     # Update progress bar
                     self.val_pbar.step(
                         batch_idx + 1,
-                        [("val_loss: ", float(f'{loss.item():.4f}'))]
+                        [('val_loss: ', round(loss_value, 4))]
                     )
             finally:
                 self.val_pbar.close()
-        # Average loss
-        avg_loss = self._reduce_mean(running_loss / len(val_loader))
+
+        avg_loss = self._reduce_mean(running_loss / len(val_loader))  # average loss
+
+        self._callbacks.on_validation_end(
+            epoch=self.current_epoch, engine=self, model=model, logs={'val_loss': avg_loss}
+        )
 
         # Package validation data for callbacks
         val_data = (last_inputs, last_targets)
