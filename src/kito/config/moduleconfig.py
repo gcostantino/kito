@@ -65,7 +65,7 @@ class DataConfig:
 
     # Total samples to use (None = use all available)
     total_samples: Optional[int] = None
-    shuffle_split: bool = False   # random (seeded) split instead of contiguous slices
+    shuffle_split: bool = False  # random (seeded) split instead of contiguous slices
     split_seed: int = 0
 
     # Preprocessing pipeline
@@ -97,6 +97,7 @@ class TrainingConfig:
     # Distributed training
     distributed_training: bool = False
     device_id: int = 0  # Only used if not distributed (if distributed, this rank handles callbacks and logging)
+    ddp_find_unused_parameters: bool = False
 
     # Weight initialization
     initialize_model_with_saved_weights: bool = False

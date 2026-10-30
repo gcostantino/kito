@@ -939,10 +939,9 @@ class Engine:
         if not isinstance(self.module.model, DistributedDataParallel):
             # Model should already be on correct device before wrapping
             # DDP will handle device placement internally
+            ddp_kwargs = {'find_unused_parameters': self.config.training.ddp_find_unused_parameters}
             if torch.device(self.device).type == 'cuda':
-                ddp_kwargs = dict(device_ids=[self.gpu_id], output_device=self.gpu_id)
-            else:
-                ddp_kwargs = {}
+                ddp_kwargs.update(device_ids=[self.gpu_id], output_device=self.gpu_id)
             self.module.model = DistributedDataParallel(self.module.model, **ddp_kwargs)
 
             # self.module._move_to_device(self.device)
