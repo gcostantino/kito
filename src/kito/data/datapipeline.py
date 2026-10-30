@@ -165,7 +165,17 @@ class GenericDataPipeline(BaseDataPipeline):
         # 3. Create splits
         self._create_splits()
 
-        # 4. Create DataLoaders
+        # 4. Check for training-only preprocessing steps
+        if steps and isinstance(self.dataset, PreprocessedDataset):
+            eval_steps = [s for s in self.dataset.preprocessing.steps
+                          if not getattr(s, 'training_only', False)]
+            if len(eval_steps) != len(self.dataset.preprocessing.steps):
+                eval_ds = PreprocessedDataset(raw_dataset, eval_steps or None)
+                self.val_dataset = Subset(eval_ds, self.val_dataset.indices)
+                self.test_dataset = Subset(eval_ds, self.test_dataset.indices)
+
+
+        # 5. Create DataLoaders
         self._create_dataloaders()
 
     def _create_splits(self):
@@ -244,7 +254,7 @@ class GenericDataPipeline(BaseDataPipeline):
         else:
             self.train_loader = None
             if self.train_dataset is not None:
-                logger.info("Warning: Training dataset is empty. Skipping train_loader creation.")
+                logger.warning("Warning: Training dataset is empty. Skipping train_loader creation.")
 
         # Val loader (no shuffling)
         if self.val_dataset is not None and len(self.val_dataset) > 0:
@@ -265,7 +275,7 @@ class GenericDataPipeline(BaseDataPipeline):
         else:
             self.val_loader = None
             if self.val_dataset is not None:
-                logger.info("Warning: Validation dataset is empty. Skipping val_loader creation.")
+                logger.warning("Warning: Validation dataset is empty. Skipping val_loader creation.")
 
         # Test loader (no shuffling)
         if self.test_dataset is not None and len(self.test_dataset) > 0:
@@ -286,7 +296,7 @@ class GenericDataPipeline(BaseDataPipeline):
         else:
             self.test_loader = None
             if self.test_dataset is not None:
-                logger.info("Warning: Test dataset is empty. Skipping test_loader creation.")
+                logger.warning("Warning: Test dataset is empty. Skipping test_loader creation.")
 
         # validation: at least one loader must exist
         if self.train_loader is None and self.val_loader is None and self.test_loader is None:
