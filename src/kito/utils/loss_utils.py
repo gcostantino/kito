@@ -1,15 +1,11 @@
-from torch import nn
+import warnings
 
-from kito.losses.builtin import _TORCH_LOSS_MAPPING
-from kito.utils.ssim_utils import ssim_loss
+from kito.losses import get_loss as _get_loss
 
 
 def get_loss(loss: str):
-    assert loss != ''
-    loss = loss.lower()
-    if loss in _TORCH_LOSS_MAPPING:
-        return getattr(nn, _TORCH_LOSS_MAPPING[loss])()  # returns the instantiated object
-    if loss == 'ssim_loss':
-        return ssim_loss  # return the signature of the custom loss: /!\ this is not the object
-    raise ValueError(
-        f"Loss '{loss}' not valid. Supported values are: {', '.join(map(repr, _torch_loss_dict.keys()))}")
+    warnings.warn("kito.utils.loss_utils.get_loss is deprecated; use kito.losses.get_loss",
+                  DeprecationWarning, stacklevel=2)
+    if loss == '':
+        raise ValueError("loss name must be non-empty")
+    return _get_loss(loss)
