@@ -7,6 +7,7 @@ from torchsummary import summary as model_summary
 
 from kito.config.moduleconfig import KitoModuleConfig
 from kito.utils.decorators import require_model_built
+from kito.utils.model_utils import unwrap_model
 
 
 class KitoModule(ABC):
@@ -341,7 +342,7 @@ class KitoModule(ABC):
         """
         Move data to device.
 
-        Override for complex data structures (dict, nested tuples, etc.).
+        Override for more complex data structures (supported here: arrays, dicts, lists, tuples).
 
         Args:
             data: Data to move
@@ -349,7 +350,15 @@ class KitoModule(ABC):
         Returns:
             Data on device
         """
-        return data.to(self.device)
+        if isinstance(data, torch.Tensor):
+            return data.to(self.device, non_blocking=True)
+        if isinstance(data, dict):
+            return {k: self.send_data_to_device(v) for k, v in data.items()}
+        if isinstance(data, list):
+            return [self.send_data_to_device(v) for v in data]
+        if isinstance(data, tuple):
+            return tuple(self.send_data_to_device(v) for v in data)
+        return data
 
     def handle_model_outputs(self, outputs):
         """
@@ -381,16 +390,16 @@ class KitoModule(ABC):
         """
         if not os.path.exists(weight_path):
             raise FileNotFoundError(f"Weight file not found: {weight_path}")
-
-        # Check file extension
-        _, file_extension = os.path.splitext(weight_path)
-        if file_extension != '.pt':
-            raise ValueError(f"Invalid weight file: {weight_path}. Must be .pt file.")
+        if os.path.splitext(weight_path)[1] not in ('.pt', '.pth'):
+            raise ValueError(f"Invalid weight file: {weight_path}. Must be .pt or .pth.")
 
         # Load weights
         state_dict = torch.load(weight_path, map_location=self.device, weights_only=True)
-        self.model.load_state_dict(state_dict, strict=strict)
-
+        if 'state_dict' in state_dict:  # tolerate wrapped checkpoints
+            state_dict = state_dict['state_dict']
+        if state_dict and all(k.startswith('module.') for k in state_dict):
+            state_dict = {k[len('module.'):]: v for k, v in state_dict.items()}  # saved from DDP
+        unwrap_model(self.model).load_state_dict(state_dict, strict=strict)
         self._weights_loaded = True
 
     def save_weights(self, weight_path: str):
@@ -401,7 +410,9 @@ class KitoModule(ABC):
             weight_path: Path to save weights
         """
         os.makedirs(os.path.dirname(weight_path) or '.', exist_ok=True)
-        torch.save(self.model.state_dict(), weight_path)
+        tmp = f"{weight_path}.tmp"
+        torch.save(unwrap_model(self.model).state_dict(), tmp)
+        os.replace(tmp, weight_path)
 
     # ========================================================================
     # UTILITIES
