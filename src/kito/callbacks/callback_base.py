@@ -102,8 +102,15 @@ class CallbackList:
             callback.on_train_begin(engine, model, **kwargs)
 
     def on_train_end(self, engine, model, **kwargs):
+        first_error = None
         for callback in self.callbacks:
-            callback.on_train_end(engine, model, **kwargs)
+            try:
+                callback.on_train_end(engine, model, **kwargs)
+            except Exception as e:  # keep closing the others
+                if first_error is None:
+                    first_error = e
+        if first_error is not None:
+            raise first_error
 
     def on_epoch_begin(self, epoch, engine, model, **kwargs):
         for callback in self.callbacks:
