@@ -17,7 +17,8 @@ class ModelCheckpoint(Callback):
         mode: 'min' or 'max' depending on whether lower/higher is better
         verbose: Print message when saving
 
-    Example:
+    Example::
+
         checkpoint = ModelCheckpoint(
             filepath='weights/model_epoch{epoch:02d}_valloss{val_loss:.4f}.pt',
             monitor='val_loss',

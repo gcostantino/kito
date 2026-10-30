@@ -342,7 +342,7 @@ class Engine:
         """
         Train the module.
 
-        Auto-builds model and sets optimizer if not already done.
+        Auto-builds the model and sets the optimizer if not already done.
 
         Args:
             train_loader: Training DataLoader
@@ -351,20 +351,21 @@ class Engine:
             max_epochs: Maximum epochs (None = use config value)
             callbacks: List of callbacks (None = create smart defaults)
 
-        Example (Simple):
-            engine.fit(train_loader, val_loader, max_epochs=100)
-            # Auto-builds and sets optimizer
+        Example::
 
-        Example (Advanced):
+            engine.fit(train_loader, val_loader, max_epochs=100)  # auto-builds and sets the optimizer
+
+        Example with a pre-built model::
+
             module.build(custom_layers=64)
             module.associate_optimizer()
             engine.fit(train_loader, val_loader, max_epochs=100)
-            # Uses pre-built model
-        Example (DDP, Advanced)
-        Strategy #1 (recommended) - use torchrun:
-            torchrun --nproc_per_node=4 train.py
-        Strategy #2: transparent (handled by Engine), less control
-            python train.py
+
+        Distributed training can be started in two ways:
+
+        1. With ``torchrun`` (recommended): ``torchrun --nproc_per_node=4 train.py``
+        2. Transparently, handled by the Engine (less control): ``python train.py``
+           (requires ``data_pipeline``)
         """
         # ===== AUTO-SPAWN FOR DDP =====
         # Only spawn if DDP enabled AND not already in a worker (spawn or torchrun)

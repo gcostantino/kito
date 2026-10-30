@@ -17,7 +17,8 @@ class KitoModule(ABC):
     Focused on model definition and single-batch operations.
     The Engine handles all iteration, callbacks, and orchestration.
 
-    Usage:
+    Usage::
+
         class MyModel(KitoModule):
             def build_inner_model(self):
                 self.model = nn.Sequential(...)
@@ -30,13 +31,9 @@ class KitoModule(ABC):
                     lr=self.learning_rate
                 )
 
-        # Use with Engine
-        module = KitoModule('MyModel', device, config)
-        module.build()
-        module.associate_optimizer()
-
-        engine = Engine(module)
-        engine.fit(train_loader, val_loader, max_epochs=100)
+        module = MyModel(config)
+        engine = Engine(module, config)
+        engine.fit(train_loader, val_loader)
     """
 
     def __init__(self, config: KitoModuleConfig = None):
@@ -91,11 +88,13 @@ class KitoModule(ABC):
         Build the model architecture.
 
         Must set:
-        - self.model: The PyTorch model
-        - self.model_input_size: Tuple of input shape (C, H, W) or (C, H, W, D)
-        - self.standard_data_shape: Output shape for inference (optional)
 
-        Example:
+        - ``self.model``: The PyTorch model
+        - ``self.model_input_size``: Tuple of input shape (C, H, W) or (C, H, W, D)
+        - ``self.standard_data_shape``: Output shape for inference (optional)
+
+        Example::
+
             def build_inner_model(self):
                 self.model = nn.Sequential(
                     nn.Conv2d(3, 64, 3, padding=1),
@@ -105,6 +104,7 @@ class KitoModule(ABC):
                 self.model_input_size = (3, 64, 64)
                 self.standard_data_shape = (3, 64, 64)
         """
+
         pass
 
     @abstractmethod
@@ -113,15 +113,18 @@ class KitoModule(ABC):
         Setup the optimizer.
 
         Must set:
-        - self.optimizer: The PyTorch optimizer
 
-        Example:
+        - ``self.optimizer``: The PyTorch optimizer
+
+        Example::
+
             def bind_optimizer(self):
                 self.optimizer = torch.optim.Adam(
                     self.model.parameters(),
                     lr=self.learning_rate
                 )
         """
+
         pass
 
     def _check_data_shape(self, batch):

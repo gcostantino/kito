@@ -29,7 +29,8 @@ class Callback(ABC):
             engine: Engine instance
             **kwargs: Additional context
 
-        Example:
+        Example::
+
             class MyCallback(Callback):
                 def __init__(self, output_dir=None):
                     self.output_dir = output_dir
