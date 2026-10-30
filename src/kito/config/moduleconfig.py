@@ -16,12 +16,12 @@ class PreprocessingStepConfig:
     Configuration for a single preprocessing step.
 
     Args:
-        type: Name of preprocessing class (e.g., 'detrend', 'standardization')
+        name: Name of preprocessing class (e.g., 'detrend', 'standardization')
         params: Dictionary of parameters to pass to preprocessing class
 
     Example:
         >>> step = PreprocessingStepConfig(
-        ...     type='standardization',
+        ...     name='standardization',
         ...     params={'mean': 0.5, 'std': 0.2}
         ... )
     """
