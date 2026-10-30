@@ -4,13 +4,11 @@ import socket
 from pathlib import Path
 from typing import List, Optional
 
-import h5py
 import numpy as np
 import torch
 import torch.distributed as dist
 from torch.utils.data import DataLoader
 
-from kito import get_logger
 from kito.callbacks.callback_base import Callback, CallbackList
 from kito.callbacks.ddp_aware_callback import DDPAwareCallback
 from kito.config.moduleconfig import CallbacksConfig, KitoModuleConfig
@@ -25,6 +23,7 @@ from kito.strategies.progress_bar_strategy_tqdm import (
 from kito.strategies.readiness_validator import ReadinessValidator
 from kito.utils.decorators import require_mode
 from kito.utils.gpu_utils import assign_device, get_available_devices
+from kito.utils.logging_utils import get_logger
 from kito.utils.model_utils import unwrap_model
 
 
@@ -741,6 +740,7 @@ class Engine:
             self._check_inference_save_path_valid(output_path)
 
             # Create HDF5 file
+            import h5py
             h5_file = h5py.File(output_path, 'w')
             h5_dataset = h5_file.create_dataset(
                 'predictions',

@@ -16,11 +16,11 @@ import torch
 import torch.distributed as dist
 from torch.utils.data import DataLoader, Subset, DistributedSampler
 
-from kito import get_logger
 from kito.config.moduleconfig import KitoModuleConfig
 from kito.data.datasets import KitoDataset
 from kito.data.preprocessed_dataset import PreprocessedDataset
 from kito.data.preprocessing import Preprocessing
+from kito.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 

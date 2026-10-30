@@ -16,7 +16,7 @@ import importlib.util
 import sys
 from pathlib import Path
 
-from kito import get_logger
+from kito.utils.logging_utils import get_logger
 
 
 class Registry:

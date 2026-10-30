@@ -11,8 +11,8 @@ from typing import Union
 
 import torch.nn as nn
 
+from kito.utils.logging_utils import get_logger
 from .registry import LossRegistry
-from .. import get_logger
 
 _discovery_cache = set()  # Track what we've already searched
 

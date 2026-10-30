@@ -1,8 +1,6 @@
-
-
 import torch
 
-from kito import get_logger
+from kito.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 def assign_device(device_type: str = "cuda", gpu_id: int = 0) -> torch.device:
