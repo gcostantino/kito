@@ -162,11 +162,11 @@ class CallbacksConfig:
     """
     Configuration for Kito's built-in default callbacks.
 
-    For custom callbacks, use instead:
-        callbacks = engine.get_default_callbacks()
-        callbacks.append(MyCustomCallback())
-        engine.fit(..., callbacks=callbacks)
+    Pass your own callbacks to fit(); they are appended to the defaults:
+        engine.fit(..., callbacks=[MyCustomCallback()])
+    To remove a default, set its enable_* flag to False.
     """
+
 
     # === CSV Logger ===
     enable_csv_logger: bool = True
