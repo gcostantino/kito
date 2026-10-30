@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 
 import torch
 from packaging.version import parse
-from torchsummary import summary as model_summary
+from torchinfo import summary as model_summary
 
 from kito.config.moduleconfig import KitoModuleConfig
 from kito.utils.decorators import require_model_built
@@ -437,14 +437,13 @@ class KitoModule(ABC):
 
     def summary(self, summary_depth: int = 3):
         """Print model summary."""
+        #from torchsummary import summary as model_summary
         if self.model_input_size is None:
             raise ValueError("model_input_size not set. Call build() first.")
+        if not self._model_built:
+            raise RuntimeError("Must call build() before printing the model summary.")
 
-        torch_version = torch.__version__.split('+')[0]
-        if parse(torch_version) < parse('2.6.0'):
-            model_summary(self.model, self.model_input_size, batch_dim=0, depth=summary_depth)
-        else:
-            model_summary(self.model, self.model_input_size)
+        model_summary(self.model, input_size=self.model_input_size, batch_dim=0, depth=summary_depth)
 
     # ========================================================================
     # STATE PROPERTIES
