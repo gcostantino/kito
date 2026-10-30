@@ -31,7 +31,7 @@ class KitoModule(ABC):
                 )
 
         # Use with Engine
-        module = MyModel('MyModel', device, config)
+        module = KitoModule('MyModel', device, config)
         module.build()
         module.associate_optimizer()
 

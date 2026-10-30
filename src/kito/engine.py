@@ -107,12 +107,12 @@ class Engine:
         config: Configuration object (for device, DDP, callbacks, etc.)
 
     Example (Simple - auto-build):
-        module = MyModel('MyModel', device, config)
+        module = KitoModule('MyModel', device, config)
         engine = Engine(module, config)
         engine.fit(train_loader, val_loader, max_epochs=100)  # Auto-builds and sets optimizer
 
     Example (Advanced - explicit control):
-        module = MyModel('MyModel', device, config)
+        module = KitoModule('MyModel', device, config)
         module.build(custom_layers=64)  # Custom build
         module.summary()  # Inspect
         module.associate_optimizer()  # Custom optimizer setup
