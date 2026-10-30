@@ -70,7 +70,9 @@ class LossRegistry:
             cls._registry[normalized_name] = loss_class
             return loss_class
 
+
         return decorator
+
 
     @classmethod
     def get(cls, name: str) -> Type[nn.Module]:

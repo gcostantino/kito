@@ -5,6 +5,7 @@ Users can simply place custom losses in losses/ directory,
 and they will be automatically discovered!
 """
 import importlib.util
+import logging
 import sys
 from pathlib import Path
 from typing import Union
@@ -38,7 +39,7 @@ def discover_losses(directory: Union[str, Path] = './losses', verbose: bool = Tr
 
     if not losses_dir.exists():
         if verbose:
-            print(f"Loss directory '{directory}' not found, skipping")
+            logging.getLogger('kito').warning(f"Loss directory '{directory}' not found, skipping")
         return 0
 
     _discovery_cache.add(str(losses_dir.resolve()))
@@ -75,24 +76,63 @@ def discover_losses(directory: Union[str, Path] = './losses', verbose: bool = Tr
             sys.modules.pop(module_name, None)
             errors.append((py_file.name, str(e)))
             if verbose:
-                print(f"Warning: Could not load {py_file.name}: {e}")
+                logging.getLogger('kito').warning(f"Warning: Could not load {py_file.name}: {e}")
 
     # Calculate how many losses were discovered
     new_count = len(LossRegistry.list_available()) - initial_count
 
     if verbose:
         if new_count > 0:
-            print(f"Discovered {new_count} loss(es) from {directory}/ ({loaded} files loaded)")
+            logging.getLogger('kito').warning(f"Discovered {new_count} loss(es) from {directory}/ ({loaded} files loaded)")
         elif loaded > 0:
-            print(f"Loaded {loaded} file(s) from {directory}/ but no losses registered")
-            print(f"Make sure files use @LossRegistry.register('name') decorator")
+            logging.getLogger('kito').warning(f"Loaded {loaded} file(s) from {directory}/ but no losses registered")
+            logging.getLogger('kito').warning(f"Make sure files use @LossRegistry.register('name') decorator")
         else:
-            print(f"No Python files found in {directory}/")
+            logging.getLogger('kito').warning(f"No Python files found in {directory}/")
 
     return new_count
 
 
+def _auto_discover_loss(loss_name: str, verbose: bool = False) -> bool:
+    """
+    Try to auto-discover a specific loss from common directories.
 
+    Called automatically when a loss is not found in registry.
+    Searches in order:
+    1. ./losses/
+    2. ./custom_losses/
+    3. ./lib/losses/
+
+    Args:
+        loss_name: Name of the loss to find
+        verbose: Print discovery messages
+
+    Returns:
+        True if loss was found and registered, False otherwise
+    """
+    # Common directories to search
+    search_dirs = [
+        './losses',
+        './custom_losses',
+        './lib/losses',
+    ]
+
+    for directory in search_dirs:
+        initial_registered = LossRegistry.is_registered(loss_name)
+
+        if initial_registered:
+            return True
+
+        # Try to discover from this directory
+        discover_losses(directory, verbose=False)
+
+        # Check if loss is now registered
+        if LossRegistry.is_registered(loss_name):
+            if verbose:
+                logging.getLogger('kito').warning(f"Auto-discovered '{loss_name}' from {directory}/")
+            return True
+
+    return False
 
 
 def get_loss(loss_config):

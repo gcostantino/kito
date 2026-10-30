@@ -57,7 +57,7 @@ def _auto_register_pytorch_losses():
     """
     # Define short names for common losses
     SHORT_NAMES = {
-        'MSELoss': ['l2', 'mae'],
+        'MSELoss': ['l2', 'mse'],
         'L1Loss': ['l1', 'mae'],
         'CrossEntropyLoss': 'cross_entropy',
         'NLLLoss': 'nll',
@@ -83,7 +83,7 @@ def _auto_register_pytorch_losses():
     # Get unique PyTorch class names from the mapping
     pytorch_classes = set(_TORCH_LOSS_MAPPING.values())
 
-    for pytorch_class_name in pytorch_classes:
+    for pytorch_class_name in sorted(pytorch_classes):
         # Get the actual PyTorch class
         if not hasattr(nn, pytorch_class_name):
             continue  # Skip if not available in current PyTorch version
@@ -116,7 +116,7 @@ def _auto_register_pytorch_losses():
                 names_to_register.add(verbose_name)
 
         # Register with all names
-        for name in names_to_register:
+        for name in sorted(names_to_register):
             try:
                 LossRegistry.register(name)(wrapper_class)
             except ValueError:

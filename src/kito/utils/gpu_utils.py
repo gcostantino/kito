@@ -1,3 +1,5 @@
+import logging
+
 import torch
 
 
@@ -28,20 +30,24 @@ def assign_device(device_type: str = "cuda", gpu_id: int = 0) -> torch.device:
 
     if device_type_lower == "cuda":
         if torch.cuda.is_available():
-            return torch.device(f"cuda:{gpu_id}")
+            n = torch.cuda.device_count()
+            if not 0 <= gpu_id < n:
+                raise ValueError(f"gpu_id={gpu_id} but only {n} CUDA device(s) are available")
+            return torch.device(f'cuda:{gpu_id}')
         else:
-            print("Warning: CUDA requested but not available. Falling back to CPU.")
+            logging.getLogger('kito').warning("CUDA requested but not available. Falling back to CPU.")
             return torch.device("cpu")
 
     elif device_type_lower == "mps":
         if torch.backends.mps.is_available():
             return torch.device("mps")
         else:
-            print("Warning: MPS requested but not available. Falling back to CPU.")
+            logging.getLogger('kito').warning("Warning: MPS requested but not available. Falling back to CPU.")
             return torch.device("cpu")
 
     elif device_type_lower == "cpu":
         return torch.device("cpu")
+
 
 def get_available_devices() -> dict:
     """

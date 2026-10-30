@@ -135,6 +135,7 @@ class ModelConfig:
 
     # Loss and optimization
     loss: Union[str, dict] = field(default_factory=dict)
+    loss_dirs: List[str] = field(default_factory=list)
 
     # Callbacks and logging
     # log_to_tensorboard: bool = False
