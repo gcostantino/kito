@@ -60,10 +60,13 @@ def _ddp_worker_fn(rank, worker_args, world_size):
         # Get data loaders
         data_pipeline = worker_args['data_pipeline']
         if data_pipeline is not None:
-            # Recreate data pipeline in this process
+            # Recreate DataPipeline in this process
             data_pipeline.setup()
             train_loader = data_pipeline.train_dataloader()
-            val_loader = data_pipeline.val_dataloader()
+            try:
+                val_loader = data_pipeline.val_dataloader()
+            except EmptySplitError:
+                val_loader = None
         else:
             raise ValueError("DataPipeline required for auto-spawned DDP")
 
