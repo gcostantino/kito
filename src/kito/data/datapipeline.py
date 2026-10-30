@@ -254,7 +254,7 @@ class GenericDataPipeline(BaseDataPipeline):
         else:
             self.train_loader = None
             if self.train_dataset is not None:
-                logger.warning("Warning: Training dataset is empty. Skipping train_loader creation.")
+                logger.warning("Training dataset is empty. Skipping train_loader creation.")
 
         # Val loader (no shuffling)
         if self.val_dataset is not None and len(self.val_dataset) > 0:
@@ -275,7 +275,7 @@ class GenericDataPipeline(BaseDataPipeline):
         else:
             self.val_loader = None
             if self.val_dataset is not None:
-                logger.warning("Warning: Validation dataset is empty. Skipping val_loader creation.")
+                logger.warning("Validation dataset is empty. Skipping val_loader creation.")
 
         # Test loader (no shuffling)
         if self.test_dataset is not None and len(self.test_dataset) > 0:
@@ -296,7 +296,7 @@ class GenericDataPipeline(BaseDataPipeline):
         else:
             self.test_loader = None
             if self.test_dataset is not None:
-                logger.warning("Warning: Test dataset is empty. Skipping test_loader creation.")
+                logger.warning("Test dataset is empty. Skipping test_loader creation.")
 
         # validation: at least one loader must exist
         if self.train_loader is None and self.val_loader is None and self.test_loader is None:

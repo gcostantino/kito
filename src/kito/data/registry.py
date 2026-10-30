@@ -25,7 +25,7 @@ class Registry:
 
     Used for:
     - Dataset types ('h5dataset', 'memdataset')
-    - Preprocessing types ('detrend', 'standardization')
+    - Preprocessing types (e.g., 'standardization')
 
     This enables config-based instantiation.
     """
