@@ -15,7 +15,7 @@ class BaseProgressBarHandler(ABC):
         pass
 
 
-class StandardProgressBarHandler(BaseProgressBarHandler):
+'''class StandardProgressBarHandler(BaseProgressBarHandler):
     def __init__(self):
         self.progress_bar = None
         # print("Epoch {}/{}".format(epoch + 1, self.n_train_epochs))  # might be replaced by logger
@@ -55,4 +55,4 @@ class DDPProgressBarHandler(BaseProgressBarHandler):
 
     def finalize(self, i, values):
         if self.is_driver:
-            self.progress_bar.add(i, values)
+            self.progress_bar.add(i, values)'''
