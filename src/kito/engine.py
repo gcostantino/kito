@@ -242,7 +242,7 @@ class Engine:
             self.logger.log_info("Fixed-weight model. Skipping weight loading...")  # fixed-weight model
         #  Load weights automatically if not already loaded and config specifies a path
         elif not self.module.is_weights_loaded:
-            if self.config.model.weight_load_path is not None:
+            if self.config.model.weight_load_path:
                 self.logger.log_info("Loading weights automatically...")
                 self.load_weights()
             else:
@@ -669,7 +669,7 @@ class Engine:
         save_to_disk = self.config.model.save_inference_to_disk
         output_path = self.config.model.inference_filename
 
-        if save_to_disk and output_path is None:
+        if save_to_disk and not output_path:
             raise ValueError("output_path required when save_to_disk=True")
 
         # Log inference info
@@ -1159,8 +1159,9 @@ class Engine:
             weight_path: Path to weight file
             strict: Strict loading
         """
-        if weight_path is None:
-            weight_path = self.config.model.weight_load_path
+        #if weight_path is None:
+        #    weight_path = self.config.model.weight_load_path
+        weight_path = weight_path or self.config.model.weight_load_path
         ReadinessValidator.check_model_built(self.module)
         ReadinessValidator.check_weights_config(weight_path)
         try:

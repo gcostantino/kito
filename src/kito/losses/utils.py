@@ -36,12 +36,12 @@ def discover_losses(directory: Union[str, Path] = './losses', verbose: bool = Tr
     if str(losses_dir.resolve()) in _discovery_cache:
         return 0
 
-    _discovery_cache.add(str(losses_dir.resolve()))
-
     if not losses_dir.exists():
         if verbose:
             print(f"Loss directory '{directory}' not found, skipping")
         return 0
+
+    _discovery_cache.add(str(losses_dir.resolve()))
 
     initial_count = len(LossRegistry.list_available())
 
@@ -72,6 +72,7 @@ def discover_losses(directory: Union[str, Path] = './losses', verbose: bool = Tr
                 spec.loader.exec_module(module)
                 loaded += 1
         except Exception as e:
+            sys.modules.pop(module_name, None)
             errors.append((py_file.name, str(e)))
             if verbose:
                 print(f"Warning: Could not load {py_file.name}: {e}")
@@ -89,6 +90,7 @@ def discover_losses(directory: Union[str, Path] = './losses', verbose: bool = Tr
             print(f"No Python files found in {directory}/")
 
     return new_count
+
 
 def _auto_discover_loss(loss_name: str, verbose: bool = False) -> bool:
     """

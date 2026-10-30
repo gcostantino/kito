@@ -67,7 +67,7 @@ class KitoModule(ABC):
         self.optimizer = None
 
         # Loss function (set by subclass or from config)
-        if config is not None:
+        if config is not None and config.model.loss:
             from kito.losses import get_loss
             self.loss = get_loss(config.model.loss)
         else:

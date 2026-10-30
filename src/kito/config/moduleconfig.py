@@ -211,8 +211,8 @@ class KitoModuleConfig:
     - workdir: Output directories
     - data: Dataset and preprocessing
     """
-    training: TrainingConfig = field(default_factory=TrainingConfig)
-    model: ModelConfig = field(default_factory=ModelConfig)
+    training: TrainingConfig
+    model: ModelConfig
     workdir: WorkDirConfig = field(default_factory=WorkDirConfig)
     data: DataConfig = field(default_factory=DataConfig)
     callbacks: CallbacksConfig = field(default_factory=CallbacksConfig)

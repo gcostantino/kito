@@ -61,15 +61,12 @@ class LossRegistry:
                     return self.weight * F.mse_loss(pred, target)
         """
 
-        def decorator(loss_class: Type[nn.Module]):
-            # Normalize name to lowercase for case-insensitive matching
+        def decorator(loss_class):
             normalized_name = name.lower()
-
-            if normalized_name in cls._registry:
-                raise ValueError(
-                    f"Loss '{name}' (normalized: '{normalized_name}') already registered!"
-                )
-
+            existing = cls._registry.get(normalized_name)
+            if existing is not None and \
+                    (existing.__module__, existing.__qualname__) != (loss_class.__module__, loss_class.__qualname__):
+                raise ValueError(f"Loss '{name}' already registered by {existing.__module__}.{existing.__qualname__}!")
             cls._registry[normalized_name] = loss_class
             return loss_class
 
