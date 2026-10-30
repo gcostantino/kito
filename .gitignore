@@ -2,3 +2,11 @@
 *.pyc
 /dist
 *.egg-info/
+.DS_Store
+.coverage
+htmlcov/
+.pytest_cache/
+docs/_build/
+examples/data/
+examples/outputs/
+__pycache__/
