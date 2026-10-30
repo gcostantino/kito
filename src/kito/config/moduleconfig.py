@@ -107,6 +107,7 @@ class TrainingConfig:
 
     def __post_init__(self):
         """Validate device_type after initialization."""
+        self.device_type = self.device_type.lower()
         valid_devices = {"cuda", "mps", "cpu"}
 
         if self.device_type not in valid_devices:
@@ -114,9 +115,6 @@ class TrainingConfig:
                 f"Invalid device_type: '{self.device_type}'. "
                 f"Must be one of {valid_devices}."
             )
-
-        # Normalize to lowercase (user-friendly)
-        self.device_type = self.device_type.lower()
 
 
 @dataclass
