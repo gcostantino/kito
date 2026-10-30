@@ -24,6 +24,7 @@ from kito.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
+
 class EmptySplitError(ValueError):
     """Raised when a requested split (train/val/test) has no samples."""
 
@@ -157,10 +158,9 @@ class GenericDataPipeline(BaseDataPipeline):
             raw_dataset = DATASETS.create(cfg.dataset_type, **kwargs)
 
         # 2. Apply preprocessing
-        if self._preprocessing is not None:
-            self.dataset = PreprocessedDataset(raw_dataset, self._preprocessing)
-        else:
-            self.dataset = raw_dataset
+        steps = self._preprocessing if self._preprocessing is not None else (
+                    list(self.data_config.preprocessing) or None)
+        self.dataset = PreprocessedDataset(raw_dataset, steps) if steps else raw_dataset
 
         # 3. Create splits
         self._create_splits()
