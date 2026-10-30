@@ -1,53 +1,40 @@
-Kito Documentation
-==================
+Kito
+====
 
-**Kito** is a PyTorch-based deep learning framework thought for researchers. Kito offers effortless training of
-deep learning models, by automatically handling training loops, optimization, callbacks, distributed training, and more.
+Kito is a PyTorch training library thought for making (scientific) experimentation processes of deep learning developers easy. You write the model and a config; ``Engine`` runs the training and
+validation loops, checkpointing, logging, inference and distributed training (DDP).
 
-.. note::
-   This documentation is under active development.
-
-Quick Start
------------
-
-Installation::
-
-   pip install pytorch-kito
-
-Basic usage::
-
-   from kito import Engine, KitoModule
-
-   # Define your model
-   class MyModel(KitoModule):
-       def build_inner_model(self):
-           self.model = nn.Sequential(...)
-
-   # Train
-   module = MyModel("model_name", device, config)
-   engine = Engine(module, config)
-   engine.fit(train_loader, val_loader)
-
-Contents
---------
+Install it with ``pip install pytorch-kito`` and continue with :doc:`quickstart`.
+Source code and issue tracker: https://github.com/gcostantino/kito
 
 .. toctree::
    :maxdepth: 2
-   :caption: User Guide
+   :caption: Getting started
 
    installation
    quickstart
-   api
+   examples
 
 .. toctree::
    :maxdepth: 1
-   :caption: Examples
+   :caption: Guides
 
-   examples/basic_usage
+   module
+   configuration
+   data
+   engine
+   inference
+   callbacks
+   ddp
 
-Indices and tables
-==================
+.. toctree::
+   :maxdepth: 2
+   :caption: Reference
+
+   api
+
+Indices
+=======
 
 * :ref:`genindex`
-* :ref:`modindex`
 * :ref:`search`

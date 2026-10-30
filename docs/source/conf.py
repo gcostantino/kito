@@ -1,26 +1,29 @@
-# Configuration file for the Sphinx documentation builder.
+"""Sphinx configuration for the Kito documentation."""
+import os
+import sys
+
+sys.path.insert(0, os.path.abspath('../../src'))
+
+from kito import __version__  # noqa: E402
 
 project = 'Kito'
 copyright = '2026, Giuseppe Costantino'
 author = 'Giuseppe Costantino'
-release = '0.2.0'
+release = __version__
+version = '.'.join(release.split('.')[:2])
 
-# Extensions
 extensions = [
+    'myst_parser',
     'sphinx.ext.autodoc',
     'sphinx.ext.napoleon',
     'sphinx.ext.viewcode',
-    'sphinx.ext.githubpages',
 ]
 
-# Theme
-html_theme = 'sphinx_rtd_theme'  # ReadTheDocs theme
+myst_heading_anchors = 3
 
-# Paths
-templates_path = ['_templates']
-exclude_patterns = []
-html_static_path = ['_static']
+exclude_patterns = ['_build']
+html_theme = 'sphinx_rtd_theme'
 
-# Napoleon settings (for Google/NumPy docstrings)
+autodoc_member_order = 'bysource'
 napoleon_google_docstring = True
-napoleon_numpy_docstring = True
+napoleon_numpy_docstring = False
