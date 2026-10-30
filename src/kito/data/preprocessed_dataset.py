@@ -36,13 +36,18 @@ class PreprocessedDataset(Dataset):
         >>> data, labels = dataset[0]  # Automatically preprocessed
     """
 
-    def __init__(self, base_dataset: Dataset, preprocessing=Union[List[PreprocessingStepConfig], List[Preprocessing]]):
+    def __init__(self, base_dataset: Dataset, preprocessing: Union[List[PreprocessingStepConfig], List[Preprocessing], None] = None):
         self.base_dataset = base_dataset
         self.preprocessing = preprocessing
 
         # build preprocessing pipeline from configs
         if preprocessing is not None:
-            self.preprocessing = self._build_pipeline(preprocessing)
+            if isinstance(preprocessing, Pipeline):
+                self.preprocessing = preprocessing
+            else:
+                if isinstance(preprocessing, (Preprocessing, dict, PreprocessingStepConfig)):
+                    preprocessing = [preprocessing]
+                self.preprocessing = self._build_pipeline(preprocessing)
         else:
             self.preprocessing = None
 
