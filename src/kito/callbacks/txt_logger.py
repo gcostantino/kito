@@ -34,9 +34,9 @@ class TextLogger(Callback):
         self.file = open(self.filename, mode)
 
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        self.file.write(f"{'=' * 60}")
-        self.file.write(f"Training started at {timestamp}")
-        self.file.write(f"{'=' * 60}")
+        self.file.write(f"{'=' * 60}\n")
+        self.file.write(f"Training started at {timestamp}\n")
+        self.file.write(f"{'=' * 60}\n")
         self.file.flush()
 
     def on_epoch_end(self, epoch, engine, model, logs=None, **kwargs):
