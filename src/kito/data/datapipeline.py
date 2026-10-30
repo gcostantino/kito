@@ -149,7 +149,12 @@ class GenericDataPipeline(BaseDataPipeline):
         if self._dataset is not None:
             raw_dataset = self._dataset
         else:
-            raise ValueError("Dataset not provided to GenericDataModule")
+            from kito.data.registry import DATASETS
+            cfg = self.data_config
+            kwargs = dict(cfg.dataset_init_args) or {'path': cfg.dataset_path}
+            if not kwargs.get('path') and not cfg.dataset_init_args:
+                raise ValueError("Provide a dataset, config.data.dataset_init_args, or config.data.dataset_path")
+            raw_dataset = DATASETS.create(cfg.dataset_type, **kwargs)
 
         # 2. Apply preprocessing
         if self._preprocessing is not None:
