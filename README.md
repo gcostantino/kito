@@ -71,13 +71,17 @@ A module implements two methods: `build_inner_model` (set `self.model` and `self
 `fit` works only when `config.training.train_mode` is `True`; `predict` works only when it is `False`. Any other combination raises `RuntimeError`. Load trained weights through `config.model.weight_load_path`:
 
 ```python
-config.training.train_mode = False
-config.model.weight_load_path = 'outputs/weights/mlp/best_mlp_<timestamp>_experiment.pt'
+import copy
 
-engine = Engine(MLP(config), config)
+infer_config = copy.deepcopy(config)
+infer_config.training.train_mode = False
+infer_config.model.weight_load_path = 'outputs/weights/mlp/best_mlp_<timestamp>_experiment.pt'
+
+engine = Engine(MLP(infer_config), infer_config)
 x_new = torch.randn(100, 20)
 predictions = engine.predict(x_new)
 print(predictions.shape)  # (100, 1)
+
 ```
 
 `predict` accepts a DataLoader, a data pipeline (its test split), a Dataset, a NumPy array, a tensor, a list, or an `(x, y)` tuple of arrays. It returns a float32 NumPy array with one row per sample. With `config.model.save_inference_to_disk = True` and `config.model.inference_filename` set, the predictions are written to an HDF5 file (dataset `predictions`) and `predict` returns `None`. `prediction_step` must return a tensor.

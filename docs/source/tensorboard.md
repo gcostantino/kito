@@ -66,16 +66,14 @@ them. The Engine picks the plotter class in this order:
 
 Available classes in `kito.callbacks.tensorboard_callback_images`:
 
-| Class | Extra arguments | Default tag |
+| Class | Extra arguments | Tag when built directly |
 |---|---|---|
 | `SimpleImagePlotter` | `cmap='viridis'` | `validation` |
 | `DifferencePlotter` | none beyond the base arguments | `difference` |
 | `BaseImagePlotter` | n/a (subclass it) | from `_get_default_tag()` |
 
-When the Engine creates the plotter it passes `tag=None`, so the plotter's own default tag applies; in the test
-above, `SimpleImagePlotter` wrote the tag `training_viz`. Set the attribute `config.model.tensorboard_img_id`
-to use a different tag. The Engine reads it with `getattr`, and it is not a declared config field.
-
+The Engine creates the plotter with tag=config.model.tensorboard_img_id (default "training_viz").
+Set that field to change the tag. A plotter’s own default tag applies only when you construct it yourself.
 ### Custom plotter
 
 Subclass `BaseImagePlotter`, implement `create_figure`, and return one matplotlib figure or a list of figures.
@@ -86,9 +84,6 @@ from kito.callbacks.tensorboard_callback_images import BaseImagePlotter
 
 
 class ErrorPlotter(BaseImagePlotter):
-    def _get_default_tag(self):
-        return 'abs_error'
-
     def create_figure(self, val_data, val_outputs, epoch, **kwargs):
         ...  # build and return a matplotlib figure
 
@@ -98,6 +93,8 @@ config.callbacks = CallbacksConfig(
     tensorboard_images=True,
     image_plotter_class=ErrorPlotter,
 )
+config.model.tensorboard_img_id = 'abs_error'
+# fit...
 ```
 
 The constructor takes `log_dir=None, tag=None, freq=1, batch_indices=None`. `log_dir` is filled in by the Engine.
