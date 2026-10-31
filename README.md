@@ -26,7 +26,8 @@ Kito is a PyTorch training library thought for making (scientific) experimentati
 pip install pytorch-kito
 ```
 
-Requires Python 3.9 or newer. Optional extras (`dev`, `tensorboard`, `docs`, `all`) are installed with, for example, `pip install "pytorch-kito[tensorboard]"`.
+Requires Python 3.9 or newer. Optional extras: `dev` (tests and linting), `docs` (documentation build), `all`, and `tensorboard`, which also installs matplotlib for the image plotters.
+
 
 ## Minimal example
 

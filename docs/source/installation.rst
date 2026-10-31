@@ -14,8 +14,8 @@ From PyPI
 
    pip install pytorch-kito
 
-Optional extras: ``tensorboard`` (TensorBoard callbacks), ``dev`` (tests and linting), ``docs`` (building this
-documentation) and ``all``:
+Optional extras: `dev` (tests and linting), `docs` (documentation build), `all`, and `tensorboard`, which also installs matplotlib for the image plotters.
+
 
 .. code-block:: bash
 

@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "If you use Kito in your work, please cite it using the metadata below."
+title: "Kito"
+type: software
+authors:
+  - family-names: Costantino
+    given-names: Giuseppe
+version: 1.0.0
+date-released: "2026-10-31"
+license: MIT
+repository-code: "https://github.com/gcostantino/kito"
+url: "https://kito.readthedocs.io"
+abstract: "Kito is a PyTorch training library thought for making (scientific) experimentation processes of deep learning developers easy. Engine runs the training and validation loops, checkpointing, logging, inference and distributed training for a user-defined model and config."
+keywords:
+  - pytorch
+  - deep learning
+  - training
+  - machine learning

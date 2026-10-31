@@ -1,304 +1,106 @@
 # Contributing to Kito
 
-Thank you for your interest in contributing to Kito! 🎉
+Bug reports, fixes, documentation improvements and new features are welcome. For anything larger than a small
+fix, open an issue first so the design can be discussed before you write code.
 
-## Ways to Contribute
-
-- 🐛 Report bugs
-- 💡 Suggest new features
-- 📝 Improve documentation
-- ✨ Submit pull requests
-- 🧪 Write tests
-- 💬 Help others in discussions
-
-## Development Setup
-
-### 1. Fork and Clone
+## Setup
 
 ```bash
-git clone https://github.com/yourusername/kito.git
+git clone [https://github.com/](https://github.com/)<your-username>/kito.git
 cd kito
+pip install -e ".[dev]"
 ```
 
-### 2. Install Development Dependencies
+Add the `docs` extra if you also build the documentation: `pip install -e ".[dev,docs]"`.
+
+## Checks before opening a pull request
 
 ```bash
-pip install -e ".[dev,tensorboard]"
-```
-
-### 3. Run Tests
-
-```bash
-pytest tests/ -v
-```
-
-### 4. Check Code Quality
-
-```bash
-# Format code
-black src/ tests/
-
-# Lint code
 ruff check src/
+pytest tests/unit -v
+sphinx-build -W --keep-going -b html docs/source docs/_build/html
 ```
 
-## Pull Request Process
+- Lint: CI runs `ruff check src/`.
+- Tests: the suite is being brought back in line with the current API and CI does not run it yet. Run at
+  least the tests for the code you changed, and add tests for new behavior. Unit tests live in `tests/unit/`,
+  integration tests in `tests/integration/`. Tests marked with markers must use markers declared in
+  `pytest.ini`, because `--strict-markers` is on.
+- Docs: the build treats warnings as errors, both locally and on Read the Docs.
 
-### 1. Create a Branch
+## Pull requests
 
-```bash
-git checkout -b feature/your-feature-name
-```
+1. Create a branch from `main`.
+2. Keep the change focused; unrelated cleanups go in a separate pull request.
+3. Update the documentation and `CHANGELOG.md` when behavior changes.
+4. In the description, explain what changed and why, and link the related issue.
 
-### 2. Make Changes
+Commit messages are short and in the imperative. A prefix such as `fix:`, `feat:`, `docs:` or `test:` is
+welcome but not required.
 
-- Write clear, concise code
-- Add tests for new features
-- Update documentation if needed
-- Follow existing code style
+## Code style
 
-### 3. Run Tests
-
-```bash
-pytest tests/ -v --cov=kito
-```
-
-Ensure:
-- All tests pass ✅
-- Coverage doesn't decrease
-
-### 4. Commit
-
-```bash
-git add .
-git commit -m "Add feature: your feature description"
-```
-
-Use clear commit messages:
-- `feat: add new callback system`
-- `fix: resolve DDP initialization bug`
-- `docs: update README with examples`
-- `test: add tests for preprocessing`
-
-### 5. Push and Create PR
-
-```bash
-git push origin feature/your-feature-name
-```
-
-Then create a Pull Request on GitHub with:
-- Clear description of changes
-- Link to related issues
-- Screenshots/examples if applicable
-
-## Code Style
-
-### Python Style
-
-- Use **Black** for formatting (line length: 100)
-- Use **type hints** where possible
-- Write **docstrings** for public functions/classes
-- Keep functions focused and small
-
-### Example
+- Follow the style of the surrounding code and add type hints to public functions.
+- Public classes and functions need Google-style docstrings (`Args:`, `Returns:`, `Raises:`).
+- Code samples in docstrings must be introduced with `::` followed by a blank line, otherwise Sphinx
+  reports a warning:
 
 ```python
-def process_data(data: np.ndarray, normalize: bool = True) -> np.ndarray:
+def scale(x, factor=2.0):
     """
-    Process input data.
+    Multiply ``x`` by ``factor``.
 
     Args:
-        data: Input data array
-        normalize: Whether to normalize data
+        x: Input array.
+        factor: Multiplier.
 
-    Returns:
-        Processed data array
+    Example::
+
+        y = scale(x, factor=3.0)
     """
-    if normalize:
-        data = (data - data.mean()) / data.std()
-    return data
+    return x * factor
 ```
 
-## Testing Guidelines
+## Adding components
 
-### Writing Tests
+### Callback
 
-- Place unit tests in `tests/unit/`
-- Place integration tests in `tests/integration/`
-- Use descriptive test names
-- Test edge cases
+Subclass `Callback` in `src/kito/callbacks/`, export it from `src/kito/callbacks/__init__.py`, and add tests
+in `tests/unit/test_callbacks.py`. Hooks receive keyword arguments, so accept `**kwargs`:
 
-### Example Test
-
-```python
-def test_normalize_with_constant_data():
-    """Test normalization with constant data (edge case)."""
-    data = np.ones(10)
-    labels = np.zeros(10)
-
-    norm = Normalize()
-    data_norm, _ = norm(data, labels)
-
-    # Should remain unchanged (no division by zero)
-    assert np.array_equal(data, data_norm)
-```
-
-### Running Specific Tests
-
-```bash
-# Run single file
-pytest tests/unit/test_preprocessing.py -v
-
-# Run single test
-pytest tests/unit/test_preprocessing.py::TestNormalize::test_normalize_default_range -v
-
-# Run with markers
-pytest -m integration  # Only integration tests
-```
-
-## Adding Features
-
-### New Callback
-
-1. Create file in `src/kito/callbacks/`
-2. Inherit from `Callback` base class
-3. Implement required hooks
-4. Add tests in `tests/unit/test_callbacks.py`
-5. Update documentation
-
-Example:
 ```python
 from kito.callbacks import Callback
 
-class MyCallback(Callback):
-    def on_epoch_end(self, epoch, logs, **kwargs):
-        print(f"Epoch {epoch} ended")
+
+class PrintLoss(Callback):
+    def on_epoch_end(self, epoch, engine, model, logs=None, **kwargs):
+        print(f"epoch {epoch}: {logs}")
 ```
 
-### New Dataset Type
+### Dataset
 
-1. Create class in `src/kito/data/datasets.py`
-2. Inherit from `KitoDataset`
-3. Register with `@DATASETS.register('name')`
-4. Implement `_load_sample()` and `__len__()`
-5. Add tests
-6. Update documentation
+Subclass `KitoDataset` (`src/kito/data/datasets.py`), implement `_load_sample` and `__len__`, and register it
+with `@DATASETS.register('name')` so it can be selected with `config.data.dataset_type`.
 
-### New Preprocessing
+### Preprocessing step
 
-1. Create class in `src/kito/data/preprocessing.py`
-2. Inherit from `Preprocessing`
-3. Register with `@PREPROCESSING.register('name')`
-4. Implement `__call__()`
-5. Add tests
-6. Update documentation
+Subclass `Preprocessing` (`src/kito/data/preprocessing.py`), implement its abstract methods `__call__` and
+`_transform`, and register it with `@PREPROCESSING.register('name')`. Steps must take statistics as explicit
+parameters rather than estimating them from the sample. Add tests in `tests/unit/test_preprocessing.py`.
 
-## Documentation
+## Reporting bugs
 
-### Docstring Format
+Include:
 
-Use Google-style docstrings:
+- A minimal script that reproduces the problem.
+- The expected and the actual behavior, with the full traceback.
+- Kito version (`python -c "import kito; print(kito.__version__)"`), Python version, PyTorch version, OS, and
+  whether you ran on CPU, one GPU or DDP.
 
-```python
-def train(self, epochs: int, callbacks: List[Callback] = None) -> Dict:
-    """
-    Train the model.
+## Feature requests
 
-    Args:
-        epochs: Number of training epochs
-        callbacks: List of callback objects
+Describe the problem you want to solve before the proposed API, and say what you currently do instead.
 
-    Returns:
-        Dictionary with training history
+## License
 
-    Raises:
-        ValueError: If epochs < 1
-
-    Example:
-        >>> model.train(epochs=10)
-        {'loss': [0.5, 0.4, ...]}
-    """
-```
-
-### README Updates
-
-When adding features, update:
-- Feature list
-- Quick start examples
-- API reference
-
-## Reporting Bugs
-
-### Before Reporting
-
-1. Check existing issues
-2. Try latest version
-3. Create minimal reproducible example
-
-### Bug Report Template
-
-```markdown
-**Describe the bug**
-Clear description of the bug.
-
-**To Reproduce**
-```python
-# Minimal code to reproduce
-from kito import Engine
-...
-```
-
-**Expected behavior**
-What you expected to happen.
-
-**Actual behavior**
-What actually happened.
-
-**Environment**
-- Kito version: 0.1.0
-- Python version: 3.11
-- PyTorch version: 2.0.0
-- OS: Ubuntu 22.04
-
-**Additional context**
-Any other relevant information.
-```
-
-## Feature Requests
-
-Use this template:
-
-```markdown
-**Feature Description**
-Clear description of the feature.
-
-**Motivation**
-Why is this needed? What problem does it solve?
-
-**Proposed Solution**
-How would you implement this?
-
-**Alternatives**
-Other approaches considered.
-
-**Additional Context**
-Examples, mockups, etc.
-```
-
-## Community Guidelines
-
-- Be respectful and inclusive
-- Help others learn and grow
-- Give constructive feedback
-- Celebrate contributions
-- Follow the [Code of Conduct](CODE_OF_CONDUCT.md)
-
-## Questions?
-
-- 💬 Ask in [GitHub Discussions](https://github.com/yourusername/kito/discussions)
-- 🐛 Report bugs in [Issues](https://github.com/yourusername/kito/issues)
-- 📧 Email: your.email@example.com
-
-## Thank You! 🙏
-
-Every contribution helps make Kito better. We appreciate your time and effort!
+By contributing you agree that your contributions are licensed under the project's MIT license.
