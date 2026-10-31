@@ -31,7 +31,7 @@ from kito.utils.logging_utils import configure_logging, get_logger
 
 # Define what's available with "from kito import *"
 __all__ = [
-    __version__,
+    "__version__",
 
     # Core
     "Engine",
