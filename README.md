@@ -242,4 +242,7 @@ Paths are relative to `work_directory`; `<timestamp>` has the form `31Oct2026-14
 See [CONTRIBUTING.md](CONTRIBUTING.md). Kito is released under the MIT license ([LICENSE](LICENSE)). Bugs and questions: https://github.com/gcostantino/kito/issues
 
 ## Acknowledgments
+Thanks to the PyTorch foundation for making PyTorch available to the community.
+
+
 This codebase was developed with assistance from Claude (Anthropic AI).
