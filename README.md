@@ -240,3 +240,6 @@ Paths are relative to `work_directory`; `<timestamp>` has the form `31Oct2026-14
 ## Contributing and license
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). Kito is released under the MIT license ([LICENSE](LICENSE)). Bugs and questions: https://github.com/gcostantino/kito/issues
+
+## Acknowledgments
+This codebase was developed with assistance from Claude (Anthropic AI).
