@@ -26,6 +26,8 @@ Source code and issue tracker: https://github.com/gcostantino/kito
    inference
    callbacks
    ddp
+   losses
+   tensorboard
 
 .. toctree::
    :maxdepth: 2

@@ -230,7 +230,8 @@ Paths are relative to `work_directory`; `<timestamp>` has the form `31Oct2026-14
 | `CSVLogger` | `logs/csv/<module>_<timestamp>_<codename>.csv` |
 | `TextLogger` | `logs/text/<module>_<timestamp>_<codename>.log` |
 | `ModelCheckpoint` | `weights/<module>/best_<module>_<timestamp>_<codename>.pt` |
-| TensorBoard callbacks (`enable_tensorboard=True`) | `logs/tensorboard/<module>/<timestamp>/<codename>/` |
+| TensorBoard callbacks (`enable_tensorboard=True`) | `logs/tensorboard/<module>/<timestamp>/<codename>/`, images in its `images/` subfolder |
+
 
 ## Contributing and license
 
