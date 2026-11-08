@@ -630,7 +630,8 @@ class Engine:
             batch_size: Optional[int] = None,
             preprocessing=None,
             test_loader: DataLoader = None,
-            data_pipeline: GenericDataPipeline = None
+            data_pipeline: GenericDataPipeline = None,
+            verbose: Optional[bool] = True,
     ):
         """
         Run inference on any kind of data.
@@ -645,6 +646,7 @@ class Engine:
                 Not applied to DataLoaders or pipelines.
             test_loader: Deprecated alias for `data`.
             data_pipeline: Deprecated alias for `data`.
+            verbose: Whether to print progress bar and headers or not.
 
         Returns:
             numpy.ndarray: Predictions (if config.model.save_inference_to_disk=False)
@@ -676,8 +678,10 @@ class Engine:
         if save_to_disk and not output_path:
             raise ValueError("output_path required when save_to_disk=True")
 
+        verbosity_level = self.config.training.test_verbosity_level if verbose is None else int(verbose)
+
         # Log inference info
-        self._log_inference_info(len(test_loader), save_to_disk, output_path)
+        self._log_inference_info(len(test_loader), save_to_disk, output_path, verbosity_level)
 
         # Prepare storage
         # eval() BEFORE any forward pass (storage preparation runs one)
@@ -687,7 +691,7 @@ class Engine:
 
         self.inference_pbar.init(
             len(test_loader),
-            self.config.training.test_verbosity_level,
+            verbosity_level,
             message='Evaluating model in inference mode'
         )
 
@@ -1203,8 +1207,10 @@ class Engine:
             '\n '.join(f"{k} -> {v}" for k, v in attrib_to_log.items()) + '\n'
         )
 
-    def _log_inference_info(self, num_batches, save_to_disk, output_path):
-        """Log inference configuration."""
+    def _log_inference_info(self, num_batches, save_to_disk, output_path, verbosity_level):
+        """Log inference configuration (skipped when test_verbosity_level is 0)."""
+        if verbosity_level <= 0:
+            return
         self.logger.log_info(
             f"\nRunning inference for {self.module.module_name}\n"
             f"Batches: {num_batches}\n"
