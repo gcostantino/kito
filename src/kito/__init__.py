@@ -4,7 +4,7 @@ Effortless PyTorch training and (scientific) experimentation
 Define your model setup, Kito handles the rest.
 """
 
-__version__ = "1.0.1"
+__version__ = "1.0.2"
 __author__ = "Giuseppe Costantino"
 
 # Import main classes for top-level access
