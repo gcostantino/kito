@@ -1,7 +1,7 @@
 Kito
 ====
 
-Kito is a PyTorch training library thought for making (scientific) experimentation processes of deep learning developers easy. You write the model and a config; ``Engine`` runs the training and
+Kito is a PyTorch training library built to simplify (scientific) experimentation processes of deep learning developers. You write the model and a config; ``Engine`` runs the training and
 validation loops, checkpointing, logging, inference and distributed training (DDP).
 
 Install it with ``pip install pytorch-kito`` and continue with :doc:`quickstart`.

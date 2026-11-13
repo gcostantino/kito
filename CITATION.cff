@@ -10,7 +10,7 @@ date-released: "2026-10-31"
 license: MIT
 repository-code: "https://github.com/gcostantino/kito"
 url: "https://kito.readthedocs.io"
-abstract: "Kito is a PyTorch training library thought for making (scientific) experimentation processes of deep learning developers easy. Engine runs the training and validation loops, checkpointing, logging, inference and distributed training for a user-defined model and config."
+abstract: "Kito is a PyTorch training library built to simplify (scientific) experimentation processes of deep learning developers. Engine runs the training and validation loops, checkpointing, logging, inference and distributed training for a user-defined model and config."
 keywords:
   - pytorch
   - deep learning
