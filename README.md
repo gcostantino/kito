@@ -104,7 +104,6 @@ See the documentation for the full list of fields.
 `GenericDataPipeline` wraps a dataset, applies preprocessing, splits it and builds the DataLoaders. Datasets return `(data, labels)`; `MemDataset(x, y)` holds arrays in memory and `H5Dataset(path)` reads the datasets `data` and `labels` from an HDF5 file lazily. By default the splits are contiguous slices in dataset order (`shuffle_split=True` uses a seeded permutation). An empty validation split is allowed: training then runs without validation.
 
 ```python
-import numpy as np
 from torch.utils.data import Subset
 
 from kito import GenericDataPipeline, MemDataset
@@ -112,9 +111,11 @@ from kito.data.preprocessing import Standardization, compute_stats
 
 dataset = MemDataset(x.numpy(), y.numpy())
 
-# Statistics from the training part only (the first 80% with the default split)
-train_part = Subset(dataset, range(int(len(dataset) * config.data.train_ratio)))
-stats = compute_stats(train_part)
+# Statistics must come from the training samples only. With the default contiguous split
+# (shuffle_split=False), the training set is the first train_ratio of the dataset in order.
+assert not config.data.shuffle_split, "this slice is the train split only without shuffle_split"
+n_train = int(len(dataset) * config.data.train_ratio)
+stats = compute_stats(Subset(dataset, range(n_train)))
 
 pipeline = GenericDataPipeline(
     config,
@@ -123,6 +124,7 @@ pipeline = GenericDataPipeline(
 )
 engine = Engine(MLP(config), config)
 engine.fit(data_pipeline=pipeline)
+
 ```
 
 Preprocessing steps work on one sample at a time and never estimate statistics from the sample they receive, so `mean`, `std` and similar values are always explicit. Use `compute_stats` to get them from the training data.
@@ -137,6 +139,18 @@ Preprocessing steps work on one sample at a time and never estimate statistics f
 | `ToTensor` | `dtype=float32`, `label_dtype=None` |
 
 Steps change `data` only. Pass `apply_to='labels'` or `apply_to='both'` (all steps except `ToTensor`) to transform the targets too. Steps marked training only (`AddNoise`) are skipped for the validation and test splits and in `predict`. Steps can be given as instances, or in `config.data.preprocessing` as `PreprocessingStepConfig(name='standardization', params={'mean': 0.0, 'std': 1.0})`.
+
+
+### Computing statistics without leakage
+
+Compute `mean`, `std`, `data_min` and `data_max` from the training samples only. Statistics that include validation or test samples leak information from held-out data into the preprocessing.
+
+- **Default split (`shuffle_split=False`).** The splits are contiguous slices in dataset order, so the training set is the first `train_ratio` of the dataset. The example above computes the statistics on exactly that slice.
+- **Shuffled data.** The slice above is *not* the training set when `shuffle_split=True`: the split is a random permutation, so roughly `1 - train_ratio` of the slice belongs to the validation and test sets. Either shuffle your data once beforehand (with a fixed seed, and keep the shuffled order) and leave `shuffle_split=False`, or compute the statistics on the training samples you know the pipeline will use.
+- **Separate test file.** Use the training statistics for validation, test and `predict`. Never fit them on the test set.
+- **Known constants.** Fixed values from the literature, such as the MNIST mean and std in `examples/`, are fine.
+
+Pass the numbers explicitly to the step, or store them in `config.data.preprocessing`, so that `predict` applies exactly the same transform.
 
 ### Custom datasets
 
